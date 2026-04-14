@@ -181,3 +181,30 @@
     #pw_messages { max-height: 180px; }
     .pw_bubble { font-size: 11px; }
 }
+
+/* 리사이즈 핸들 */
+#pw_resize_handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, #F4C0D1 50%);
+    border-bottom-right-radius: 16px;
+}
+
+/* 접기 시 팝업 - 버튼 두 개만 딱 */
+#pw_popup.collapsed-popup {
+    width: auto !important;
+    min-width: 0 !important;
+    border-bottom: none;
+}
+
+#pw_popup_body.collapsed {
+    display: none;
+}
+
+#pw_popup_header {
+    min-width: 0;
+}
