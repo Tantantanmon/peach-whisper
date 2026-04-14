@@ -1,0 +1,288 @@
+/* ===== Peach Whisper - style.css ===== */
+
+/* 설정 패널 말투 카드 */
+.pw_mood_card {
+    border: 1px solid #f2c4ce;
+    border-radius: 10px;
+    padding: 10px 4px 8px;
+    background: var(--SmartThemeBlurTintColor, #fff);
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.pw_mood_card:hover {
+    background: #FBEAF0;
+    border-color: #D4537E;
+}
+
+.pw_mood_card.active {
+    background: #FBEAF0;
+    border-color: #D4537E;
+}
+
+/* ===== 플로팅 버튼 ===== */
+#pw_float_btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--SmartThemeBlurTintColor, #fff);
+    border: 1px solid #f2c4ce;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(212, 83, 126, 0.15);
+    transition: all 0.15s;
+    line-height: 1;
+}
+
+#pw_float_btn:hover {
+    background: #FBEAF0;
+    border-color: #D4537E;
+    transform: scale(1.05);
+}
+
+/* ===== 팝업 ===== */
+#pw_popup {
+    position: fixed;
+    bottom: 136px;
+    right: 20px;
+    width: 300px;
+    background: var(--SmartThemeBlurTintColor, #fff);
+    border: 1px solid #f2c4ce;
+    border-radius: 16px;
+    overflow: hidden;
+    z-index: 999;
+    box-shadow: 0 4px 24px rgba(212, 83, 126, 0.12);
+    display: none;
+}
+
+#pw_popup.visible {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 팝업 헤더 (접기 + X만) */
+#pw_popup_header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 7px 12px;
+    background: #fff5f7;
+    border-bottom: 1px solid #fce8ee;
+    flex-shrink: 0;
+}
+
+#pw_popup_header .pw_toggle_btn,
+#pw_popup_header .pw_close_btn {
+    font-size: 13px;
+    color: #D4537E;
+    cursor: pointer;
+    line-height: 1;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    transition: transform 0.2s;
+    user-select: none;
+}
+
+#pw_popup_header .pw_toggle_btn.collapsed {
+    transform: rotate(180deg);
+}
+
+/* 팝업 메시지 영역 */
+#pw_popup_body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#pw_messages {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+/* 메시지 말풍선 */
+.pw_msg_row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.pw_msg_row.user {
+    flex-direction: row-reverse;
+}
+
+.pw_avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #FBEAF0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.pw_avatar.user {
+    background: #EAF3DE;
+    font-size: 10px;
+    color: #3B6D11;
+    font-weight: 500;
+}
+
+.pw_bubble {
+    background: #fff5f7;
+    border: 1px solid #fce8ee;
+    border-radius: 0 8px 8px 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--SmartThemeBodyColor, #2C2C2A);
+    max-width: 82%;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.pw_bubble.user {
+    background: #FBEAF0;
+    border-color: #F4C0D1;
+    border-radius: 8px 0 8px 8px;
+    color: #72243E;
+}
+
+/* 로딩 점 */
+.pw_loading {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 2px;
+}
+
+.pw_loading span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #D4537E;
+    animation: pw_bounce 1.2s infinite ease-in-out;
+    opacity: 0.4;
+}
+
+.pw_loading span:nth-child(1) { animation-delay: 0s; }
+.pw_loading span:nth-child(2) { animation-delay: 0.2s; }
+.pw_loading span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pw_bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* 입력창 */
+#pw_input_area {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid #fce8ee;
+    background: var(--SmartThemeBlurTintColor, #fff);
+    flex-shrink: 0;
+}
+
+#pw_input {
+    flex: 1;
+    border: 1px solid #F4C0D1;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    background: #fff5f7;
+    color: var(--SmartThemeBodyColor, #2C2C2A);
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+#pw_input::placeholder {
+    color: #D4537E;
+    opacity: 0.6;
+}
+
+#pw_send_btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #D4537E;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+#pw_send_btn:hover {
+    background: #993556;
+}
+
+#pw_send_btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* ===== 모바일 대응 ===== */
+@media (max-width: 768px) {
+    #pw_float_btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        bottom: 70px;
+        right: 12px;
+    }
+
+    #pw_popup {
+        /* 화면 밖으로 안 나가게 - 고정값 대신 vw 사용 */
+        width: calc(100vw - 24px);
+        left: 12px;
+        right: 12px;
+        bottom: 116px;
+        border-radius: 12px;
+    }
+
+    #pw_messages {
+        max-height: 180px;
+    }
+
+    .pw_bubble {
+        font-size: 11px;
+    }
+}
+
+/* ST 다크테마 대응 */
+@media (prefers-color-scheme: dark) {
+    #pw_popup_header {
+        background: rgba(251, 234, 240, 0.08);
+    }
+    .pw_bubble {
+        background: rgba(251, 234, 240, 0.08);
+        border-color: rgba(242, 196, 206, 0.2);
+    }
+    .pw_bubble.user {
+        background: rgba(251, 234, 240, 0.15);
+    }
+    #pw_input {
+        background: rgba(251, 234, 240, 0.08);
+        border-color: rgba(242, 196, 206, 0.3);
+        color: var(--SmartThemeBodyColor);
+    }
+}

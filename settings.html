@@ -1,0 +1,82 @@
+<div class="pw_settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>🍑 Peach Whisper</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+
+            <!-- 활성화 토글 -->
+            <label class="checkbox_label" for="pw_enabled">
+                <input type="checkbox" id="pw_enabled" checked />
+                <span><strong>버튼 활성화</strong></span>
+            </label>
+            <small class="notes">채팅창 우하단 🍑 버튼 표시</small>
+
+            <hr class="m-t-1 m-b-1">
+
+            <!-- API 소스 선택 -->
+            <div>
+                <label for="pw_source">API 소스</label>
+                <small class="notes">OOC 어시스턴트에 사용할 API를 선택하세요</small>
+            </div>
+            <select id="pw_source" class="text_pole pw_source_select">
+                <option value="main">Main API (현재 채팅 API)</option>
+                <option value="profile">Connection Profile (별도 프로필)</option>
+            </select>
+
+            <!-- Connection Profile (조건부 표시) -->
+            <div id="pw_profile_settings" style="display: none; margin-top: 8px;">
+                <label for="pw_connection_profile">Connection Profile</label>
+                <select id="pw_connection_profile" class="text_pole pw_connection_profile"></select>
+            </div>
+
+            <hr class="m-t-1 m-b-1">
+
+            <!-- AI 말투 선택 -->
+            <div>
+                <label>AI 말투</label>
+                <small class="notes">Peach Whisper의 말투를 선택하세요</small>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <label class="pw_mood_option" style="flex: 1; text-align: center; cursor: pointer;">
+                    <input type="radio" name="pw_mood" value="busan" style="display:none;" />
+                    <div class="pw_mood_card" data-mood="busan">
+                        <div style="font-size: 20px;">🍑</div>
+                        <div style="font-size: 11px; font-weight: 500; margin-top: 4px;">부산깡패</div>
+                        <div style="font-size: 10px; opacity: 0.7;">야 임마!</div>
+                    </div>
+                </label>
+                <label class="pw_mood_option" style="flex: 1; text-align: center; cursor: pointer;">
+                    <input type="radio" name="pw_mood" value="shy" style="display:none;" />
+                    <div class="pw_mood_card" data-mood="shy">
+                        <div style="font-size: 20px;">🍑</div>
+                        <div style="font-size: 11px; font-weight: 500; margin-top: 4px;">소심이</div>
+                        <div style="font-size: 10px; opacity: 0.7;">죄송한데요...</div>
+                    </div>
+                </label>
+                <label class="pw_mood_option" style="flex: 1; text-align: center; cursor: pointer;">
+                    <input type="radio" name="pw_mood" value="obsessed" style="display:none;" />
+                    <div class="pw_mood_card" data-mood="obsessed">
+                        <div style="font-size: 20px;">🍑</div>
+                        <div style="font-size: 11px; font-weight: 500; margin-top: 4px;">집통소</div>
+                        <div style="font-size: 10px; opacity: 0.7;">유아마인</div>
+                    </div>
+                </label>
+            </div>
+
+            <hr class="m-t-1 m-b-1">
+
+            <!-- 최근 메시지 수 -->
+            <div>
+                <label for="pw_context_messages">최근 메시지 수</label>
+                <small class="notes">분석에 참고할 최근 메시지 개수 (기본 10개)</small>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                <input type="range" id="pw_context_messages" min="5" max="50" step="1" value="10" style="flex: 1;" />
+                <span id="pw_context_messages_val" style="min-width: 32px; font-weight: 500;">10개</span>
+            </div>
+
+        </div>
+    </div>
+</div>
