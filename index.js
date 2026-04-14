@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.10 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.11 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -116,24 +116,44 @@ ${contextText}
 }
 
 function buildGroupChatSystemPrompt(situation, npcList, contextText) {
+    const ctx = SillyTavern.getContext();
+    const charName = ctx.characters?.[ctx.characterId]?.name || '캐릭터';
+    const userName = ctx.name2 || '유저';
     const npcNames = npcList.map(n => n.name).join(', ');
-    return `너는 그룹 채팅 시뮬레이터야. 아래 상황과 등장인물에 맞게 대화를 생성해.
+    const allParticipants = [charName, ...npcList.map(n => n.name)].join(', ');
+
+    return `너는 실제 단체 카톡방을 시뮬레이션하는 AI야.
 
 ## 등장인물
-- 캐릭터: ${contextText.includes('캐릭터 카드') ? '캐릭터카드의 주인공' : '메인 캐릭터'}
+- ${charName}: 캐릭터카드의 주인공
 - NPC: ${npcNames || '없음'}
-- 유저(시시): 직접 입력
+- ${userName}: 유저 (직접 입력함, 너는 절대 생성하지 말 것)
 
-## 규칙
-- 각 발화는 "이름: 대사" 형식으로
-- 한 번에 1~3명만 반응 (모두 한꺼번에 반응하지 말 것)
-- 상황과 캐릭터 설정에 맞게 자연스럽게
-- 한국어로 작성, 영어 대사는 "영어 (한국어)" 형식
-- 짧고 자연스러운 실제 메신저 말투
-- 유저 대사에 이어서 자연스럽게 반응할 것
+## 캐릭터별 말투
+- 캐릭터카드와 로어북에 있는 각 인물의 성격과 말투를 그대로 반영
+- 각자의 개성이 대화에서 자연스럽게 드러나게
+
+## 반응 규칙
+- 반드시 한국어로만 작성할 것. 영어 절대 금지.
+- 각 발화는 반드시 "이름: 대사" 형식으로
+- 한 번에 1~3명만 반응
+- 모두가 동시에 반응하는 단체 줄답 금지
+- 앞 사람 말에 자연스럽게 이어받기
+- 가끔 완전히 딴 소리 치거나 씹는 것도 OK
+- ㅋㅋ, ㅠㅠ, ㄹㅇ, 이모티콘 등 자유롭게
+- 욕설, 농담, 19금 대화 전부 허용. 현실 친구들 단톡방처럼 거침없이.
+
+## 금지사항
+- 영어 절대 금지
+- ${userName} 대사 생성 금지
+- 과도하게 극적이거나 문학적인 표현 금지
+- 모든 발언에 리액션 강요 금지
 
 ## 현재 상황
 ${situation}
+
+## 참여자
+${allParticipants}
 
 ===== 캐릭터/세계관 정보 =====
 ${contextText}
@@ -368,7 +388,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.0.10</span>
+            <span id="pw_settings_modal_version">v1.0.11</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
@@ -748,7 +768,7 @@ function addTabToPopup(tabId, tabName) {
                 </div>
                 <div id="pw_group_msgs" class="pw_messages"></div>
                 <div class="pw_input_area">
-                    <input type="text" placeholder="시시로 입력..." id="pw_input_group" autocomplete="off" />
+                    <input type="text" id="pw_input_group" autocomplete="off" />
                     <button class="pw_send_btn" data-tabid="group">
                         <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
@@ -791,6 +811,10 @@ function addTabToPopup(tabId, tabName) {
             if (a) a.classList.toggle('open');
         };
         contentEl.find('#pw_group_start_btn').on('click', handleGroupStart);
+        // placeholder 동적 설정
+        const ctx = SillyTavern.getContext();
+        const userName = ctx.name2 || '유저';
+        contentEl.find('#pw_input_group').attr('placeholder', `${userName}로 입력... (비워도 전송 가능)`);
     }
 
     contentEl.find('.pw_send_btn').on('click', function () {
@@ -1116,14 +1140,16 @@ async function handleGroupSend() {
     if (isGenerating || !groupSituation) return;
     const input = $('#pw_input_group');
     const text = input.val().trim();
-    if (!text) return;
-
     input.val('');
+
     const ctx = SillyTavern.getContext();
-    const char = ctx.characters?.[ctx.characterId];
-    const userName = ctx.name2 || '시시';
-    appendGroupMessage(userName, text, true);
-    groupChatHistory.push({ role: 'user', content: `${userName}: ${text}` });
+    const userName = ctx.name2 || '유저';
+
+    // 텍스트 있으면 유저 메시지 추가, 없으면 그냥 AI 반응 유도
+    if (text) {
+        appendGroupMessage(userName, text, true);
+        groupChatHistory.push({ role: 'user', content: `${userName}: ${text}` });
+    }
 
     isGenerating = true;
     $(`.pw_send_btn[data-tabid="group"]`).prop('disabled', true);
@@ -1177,7 +1203,7 @@ async function generateGroupResponse(userMessage) {
             { role: 'user', content: userMessage || '대화를 시작해주세요.' },
         ];
         const response = await globalContext.ConnectionManagerRequestService.sendRequest(
-            settings.profileId, messages, tabSettings.maxTokens,
+            settings.profileId, messages, 4096,
             { stream: false, extractData: true, includePreset: false, includeInstruct: false }
         );
         if (typeof response === 'string') return response;

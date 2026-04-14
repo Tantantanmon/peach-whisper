@@ -62,7 +62,7 @@
 #pw_float_btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
 /* 채팅 팝업 */
-#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; max-height: 80vh; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.08); display: none; flex-direction: column; height: auto; }
+#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; max-height: 80vh; height: auto; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.08); display: none; flex-direction: column; }
 #pw_popup.visible { display: flex; }
 #pw_popup_header { background: #fff; padding: 8px 14px; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; gap: 14px; cursor: grab; flex-shrink: 0; user-select: none; }
 #pw_popup_header button { font-size: 12px; color: #bbb; cursor: pointer; background: none; border: none; padding: 2px; transition: color 0.15s; line-height: 1; }
@@ -79,7 +79,7 @@
 .pw_tab:hover:not(.active) { color: #555; }
 #pw_tab_add { padding: 9px 8px; font-size: 13px; color: #ddd; cursor: pointer; margin-left: auto; flex-shrink: 0; user-select: none; }
 #pw_tab_add:hover { color: #888; }
-.pw_tab_content { display: none; flex-direction: column; flex: 1; min-height: 0; }
+.pw_tab_content { display: none; flex-direction: column; }
 .pw_tab_content.active { display: flex; }
 
 /* 메시지 */
