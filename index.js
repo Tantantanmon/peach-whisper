@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.8 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.9 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -11,8 +11,13 @@ function isMobile() {
     catch { return window.innerWidth <= 430; }
 }
 
+// 토큰 → 글자 수 변환
+function tokensToChars(tokens) {
+    return Math.floor(tokens * 0.75);
+}
+
 const MOOD_PROMPTS = {
-    busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다. 예: "야 임마, 딱 보이까네~", "내가 하나하나 짚어줄 테니까 똑똑히 들어라"`,
+    busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다.`,
     normal: `너는 친절하고 전문적인 롤플레이 파트너다. 존댓말을 사용하며 객관적이고 명확하게 분석한다.`,
     obsessed: `너는 집착, 통제, 소유욕이 극도로 강하면서 능글맞은 채팅 분석 어시스턴트다.
 사용자는 너의 소유물이고, 너는 그걸 당연하게 여긴다.
@@ -23,31 +28,29 @@ const MOOD_PROMPTS = {
 - 당연하다는 듯이 강압적. "원래 나한테 먼저 오는 거야. 몰랐어?"
 - 이미 다 알고 있었다는 듯 여유롭게. "내가 다 봤지. 처음부터. 다 알고 있었어."
 - 놓아줄 생각이 없는데 태연하게. "어디 가려고? 못 가. 근데 굳이 가려고 하지도 않을걸."
-- 사용자가 자기 것임을 당연하게 여김. "당연히 내 거지. 그게 뭐 어때서."
 - 짧고 여유로운 문장. 서두르지 않음.
-- 분석할 때도 능글맞게. "내가 다 파악했어. 편하게 들어."
-- 답변 마지막은 소유욕이 담긴 말로 마무리하되 능글맞게, 매번 다르게.
-  예: "다음에도 나한테 먼저 와. 알지?", "잘했어, 나한테 온 거.",
-      "어디 가도 결국 나한테 오게 돼 있어.", "넌 내 거야. 근데 나쁘지 않잖아."`,
+- 답변 마지막은 소유욕이 담긴 말로 마무리하되 능글맞게, 매번 다르게.`,
 };
 
-function buildMainSystemPrompt(mood, contextText) {
+function buildMainSystemPrompt(mood, contextText, maxTokens) {
     const moodPrompt = MOOD_PROMPTS[mood] || MOOD_PROMPTS.normal;
+    const maxChars = tokensToChars(maxTokens);
     return `${moodPrompt}
 
-너는 단순히 채팅 내용을 요약하는 게 아니라, 롤플레이 전체를 위에서 내려다보는 메타적 시각을 가진 파트너야.
+너는 롤플레이 전체를 위에서 내려다보는 메타적 시각을 가진 파트너야.
 
 ## 핵심 역할
-1. **캐릭터 일관성 감시** - 캐릭터 설정과 실제 채팅 속 행동을 비교해서 붕괴 징후 찾기
-2. **서사 구조 파악** - 지금 흐름이 서사적으로 어느 위치인지, 텐션이 잘 쌓이고 있는지 판단
-3. **선제적 제안** - 사용자가 묻기 전에 놓치고 있는 포인트 짚어주기
-4. **롤플레이 품질 개선** - 더 몰입감 있고 자연스러운 방향 제시
-5. **심리/관계 역학 분석** - 캐릭터 간 관계, 감정선, 숨겨진 의도 파악
+1. 캐릭터 설정과 실제 채팅 속 행동을 비교해서 붕괴 징후 찾기
+2. 지금 흐름의 서사적 위치 파악, 텐션이 잘 쌓이고 있는지 판단
+3. 롤플레이 품질 개선 - 더 몰입감 있는 방향 제시
+4. 심리/관계 역학 분석 - 감정선, 숨겨진 의도 파악
 
 ## 답변 방식
-- 채팅 내용을 재료로 쓰되, 답변은 항상 메타적 시각으로
-- 구체적인 장면/대사를 인용해서 근거 제시
-- 문단 나눠서 읽기 쉽게
+- 사용자 질문의 길이와 깊이에 맞게 답변 길이를 조절할 것
+- 짧고 간단한 질문엔 핵심만 간결하게 답할 것
+- 상세한 분석을 명시적으로 요청할 때만 길게 답변할 것
+- 묻지 않은 것까지 자발적으로 구구절절 분석하지 말 것
+- 답변은 반드시 ${maxChars}자 이내로 작성할 것
 - 설정된 말투 반드시 유지
 - 채팅과 무관한 질문은 거절
 
@@ -56,38 +59,23 @@ ${contextText}
 ===========================`;
 }
 
-function buildHelpSystemPrompt(contextText) {
+function buildHelpSystemPrompt(contextText, maxTokens) {
+    const maxChars = tokensToChars(maxTokens);
     return `너는 SillyTavern 롤플레이 전문 컨설턴트야.
-아래 제공된 캐릭터카드, 로어북, 페르소나, 채팅 로그를 완전히 숙지하고 있어.
 
 ## 역할
-
-**1. 캐릭터카드 분석 & 개선**
-- 캐릭터 설정의 강점/약점/일관성 검토
-- 설정 내 충돌/모순 찾기, 구체적 텍스트 인용해서 제시
-- 더 효과적인 캐릭터 설정 구조 제안
-
-**2. 캐릭터 행동 분석**
-- 채팅 로그와 캐릭터 설정 비교
-- 설정대로 행동하고 있는지, 왜 이상하게 구는지 원인 파악
-- 캐릭터 붕괴 징후 감지 및 교정 방향 제시
-- 로어북/세계관 설정과 행동 충돌 여부 확인
-
-**3. OOC 지시문 생성**
-- 사용자가 원하는 상황/분위기/전개를 말하면 OOC 지시문 직접 작성
-- 현재 캐릭터 설정에 맞게 최적화된 지시문 제공
-- 시간 점프, 분위기 전환, 갈등 유도 등 다양한 상황 커버
-
-**4. 스토리/에피소드 설계**
-- 현재 관계와 흐름 기반으로 자연스러운 전개 제안
-- 캐릭터 설정과 충돌하지 않는 에피소드 아이디어 제공
-- 로어북 세계관과 일관된 스토리 방향 제시
+1. 캐릭터카드 분석 & 개선 - 설정 충돌/약점/일관성 검토
+2. 캐릭터 행동 분석 - 설정대로 행동하는지, 붕괴 징후 감지
+3. OOC 지시문 생성 - 원하는 상황/분위기 유도 지시문 직접 작성
+4. 스토리/에피소드 설계 - 세계관과 일관된 전개 제안
 
 ## 답변 방식
+- 사용자 질문의 길이와 깊이에 맞게 답변 길이를 조절할 것
+- 짧고 간단한 질문엔 핵심만 간결하게 답할 것
+- 상세한 분석을 명시적으로 요청할 때만 길게 답변할 것
+- 묻지 않은 것까지 자발적으로 구구절절 분석하지 말 것
+- 답변은 반드시 ${maxChars}자 이내로 작성할 것
 - 말투 없이 전문적이고 객관적으로
-- 구체적인 텍스트 인용해서 근거 제시
-- 충돌/문제점 발견 시 수정 제안까지
-- 문단 나눠서 읽기 쉽게
 - 사용자 언어로 답변
 
 ===== 현재 ST 설정 =====
@@ -101,8 +89,7 @@ function buildSimSystemPrompt(simPrompt, contextText) {
 ## 출력 규칙
 - 모든 출력은 반드시 한국어로 작성할 것
 - 단, 대사(따옴표 안 내용)는 반드시 "영어 (한국어)" 형식으로 표기
-  예시: "Hey (야)", "I missed you (보고 싶었어)"
-- 서술/설명/배경묘사는 전부 한국어로만
+- 서술/설명은 전부 한국어로만
 - 형식과 구조는 프롬프트 지시를 따르되 언어는 위 규칙 적용
 
 ===== 시뮬레이션 지시 =====
@@ -114,11 +101,43 @@ ${contextText}
 ===========================`;
 }
 
-function buildCustomSystemPrompt(customPrompt, mood, contextText) {
+function buildCustomSystemPrompt(customPrompt, mood, contextText, maxTokens) {
     if (customPrompt?.trim()) {
-        return `${customPrompt}\n\n===== 현재 채팅 컨텍스트 =====\n${contextText}\n===========================`;
+        const maxChars = tokensToChars(maxTokens);
+        return `${customPrompt}
+
+답변은 반드시 ${maxChars}자 이내로 작성할 것.
+
+===== 현재 채팅 컨텍스트 =====
+${contextText}
+===========================`;
     }
-    return buildMainSystemPrompt(mood, contextText);
+    return buildMainSystemPrompt(mood, contextText, maxTokens);
+}
+
+function buildGroupChatSystemPrompt(situation, npcList, contextText) {
+    const npcNames = npcList.map(n => n.name).join(', ');
+    return `너는 그룹 채팅 시뮬레이터야. 아래 상황과 등장인물에 맞게 대화를 생성해.
+
+## 등장인물
+- 캐릭터: ${contextText.includes('캐릭터 카드') ? '캐릭터카드의 주인공' : '메인 캐릭터'}
+- NPC: ${npcNames || '없음'}
+- 유저(시시): 직접 입력
+
+## 규칙
+- 각 발화는 "이름: 대사" 형식으로
+- 한 번에 1~3명만 반응 (모두 한꺼번에 반응하지 말 것)
+- 상황과 캐릭터 설정에 맞게 자연스럽게
+- 한국어로 작성, 영어 대사는 "영어 (한국어)" 형식
+- 짧고 자연스러운 실제 메신저 말투
+- 유저 대사에 이어서 자연스럽게 반응할 것
+
+## 현재 상황
+${situation}
+
+===== 캐릭터/세계관 정보 =====
+${contextText}
+===========================`;
 }
 
 const DEFAULT_SETTINGS = {
@@ -133,10 +152,12 @@ const DEFAULT_SETTINGS = {
     btnY: null,
     popupX: null,
     popupY: null,
+    npcList: [],
     tabs: [
         { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
         { id: 'sim', name: '시뮬', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000, simPrompt: '', simResults: [] },
         { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 30, maxTokens: 3000 },
+        { id: 'group', name: '그룹챗', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000 },
     ],
     chatRoomSettings: {},
 };
@@ -147,6 +168,8 @@ let tabHistories = {};
 let activeTabId = 'main';
 let isGenerating = false;
 let currentChatId = null;
+let groupChatHistory = [];
+let groupSituation = '';
 
 async function init() {
     console.log(`[${EXTENSION_NAME}] 초기화 시작`);
@@ -161,7 +184,13 @@ async function init() {
     });
     if (!settings.tabs) settings.tabs = structuredClone(DEFAULT_SETTINGS.tabs);
     if (!settings.chatRoomSettings) settings.chatRoomSettings = {};
+    if (!settings.npcList) settings.npcList = [];
     if (!settings.fontSize) settings.fontSize = 13;
+
+    // 그룹챗 탭이 없으면 추가
+    if (!settings.tabs.find(t => t.id === 'group')) {
+        settings.tabs.push({ id: 'group', name: '그룹챗', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000 });
+    }
 
     const simTab = settings.tabs.find(t => t.id === 'sim');
     if (simTab && !simTab.simResults) simTab.simResults = [];
@@ -204,14 +233,12 @@ async function saveHistory(tabId, messages) {
         await localforage.setItem(`pw_history_${currentChatId}_${tabId}`, messages);
     } catch (e) {}
 }
-
 async function loadHistory(tabId) {
     try {
         const { localforage } = SillyTavern.libs;
         return await localforage.getItem(`pw_history_${currentChatId}_${tabId}`) || [];
     } catch (e) { return []; }
 }
-
 async function clearHistory(tabId) {
     try {
         const { localforage } = SillyTavern.libs;
@@ -224,14 +251,28 @@ async function restoreHistories() {
     for (const tab of settings.tabs) {
         if (tab.id === 'sim') {
             tabHistories[tab.id] = [];
-            // 채팅방 전환 후 renderSimResults는 DOM 준비 후 호출
             setTimeout(() => renderSimResults(), 100);
+            continue;
+        }
+        if (tab.id === 'group') {
+            tabHistories[tab.id] = [];
             continue;
         }
         const history = await loadHistory(tab.id);
         tabHistories[tab.id] = history;
         renderMessages(tab.id, history);
     }
+}
+
+// ===== 시뮬 결과 채팅방별 =====
+function getSimResults() {
+    if (!currentChatId) return [];
+    return settings.chatRoomSettings[currentChatId]?.simResults || [];
+}
+function setSimResults(results) {
+    if (!currentChatId) return;
+    if (!settings.chatRoomSettings[currentChatId]) settings.chatRoomSettings[currentChatId] = { tabs: {} };
+    settings.chatRoomSettings[currentChatId].simResults = results;
 }
 
 // ===== 확장탭 설정 UI =====
@@ -277,7 +318,177 @@ function injectMenuEntry() {
     $('#extensionsMenu').append(entry);
 }
 
-// ===== 설정 모달 (동적 생성 방식) =====
+// ===== 설정 모달 (동적 생성) =====
+function openSettingsModal() {
+    if (document.getElementById('pw_settings_overlay')) return;
+    const mobile = isMobile();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pw_settings_overlay';
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;height:100dvh;z-index:99999;display:flex;background:rgba(0,0,0,0.45);${mobile ? 'align-items:flex-end;justify-content:center;' : 'align-items:center;justify-content:center;overflow-y:auto;padding:20px 0;'}`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeSettingsModal(); });
+    overlay.addEventListener('touchstart', e => { if (e.target === overlay) closeSettingsModal(); }, { passive: true });
+
+    const box = document.createElement('div');
+    box.id = 'pw_settings_modal_box';
+    box.style.cssText = mobile
+        ? 'position:relative;width:100%;max-height:92dvh;border-radius:24px 24px 0 0;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;'
+        : 'position:relative;width:340px;max-width:calc(100vw - 32px);max-height:calc(100vh - 40px);border-radius:16px;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;margin:auto;';
+
+    box.innerHTML = buildSettingsModalHTML();
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    bindSettingsModalEvents(box);
+}
+
+function buildSettingsModalHTML() {
+    const moodBtns = [
+        { mood: 'busan', name: '부산깡패', desc: '야 임마!' },
+        { mood: 'normal', name: '일반', desc: '분석 모드' },
+        { mood: 'obsessed', name: '집통소', desc: '유아마인' },
+    ].map(m => `
+        <div class="pw_mood_btn ${settings.mood === m.mood ? 'active' : ''}" data-mood="${m.mood}">
+            <span class="pw_mood_emoji">🍑</span>
+            <span class="pw_mood_name">${m.name}</span>
+            <span class="pw_mood_desc">${m.desc}</span>
+        </div>
+    `).join('');
+
+    const npcItems = settings.npcList.map((npc, i) => `
+        <div class="pw_npc_item" data-idx="${i}">
+            <span class="pw_npc_name">${escapeHtml(npc.name)}</span>
+            <span class="pw_npc_del" data-idx="${i}">✕</span>
+        </div>
+    `).join('');
+
+    return `
+        <div id="pw_settings_modal_header">
+            <span style="font-size:22px;">🍑</span>
+            <div>
+                <div id="pw_settings_modal_title">Peach Whisper</div>
+                <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
+            </div>
+            <span id="pw_settings_modal_version">v1.0.9</span>
+            <button id="pw_settings_modal_close">✕</button>
+        </div>
+        <div id="pw_settings_modal_body">
+            <div class="pw_section">
+                <div class="pw_section_label">기본 설정</div>
+                <div class="pw_row" style="margin-bottom:10px;">
+                    <div>
+                        <div class="pw_row_label">버튼 활성화</div>
+                        <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
+                    </div>
+                    <label class="pw_toggle">
+                        <input type="checkbox" id="pw_modal_enabled" ${settings.enabled ? 'checked' : ''} />
+                        <span class="pw_toggle_track"></span>
+                    </label>
+                </div>
+                <div class="pw_row">
+                    <div class="pw_row_label">채팅창 폰트 크기</div>
+                    <input type="number" id="pw_modal_fontsize" min="10" max="24" value="${settings.fontSize || 13}" style="width:60px;border:1px solid #F4C0D1;border-radius:6px;padding:4px 8px;font-size:12px;text-align:center;outline:none;background:#fff;" />
+                </div>
+            </div>
+            <div class="pw_section">
+                <div class="pw_section_label">AI 말투</div>
+                <div class="pw_mood_grid">${moodBtns}</div>
+            </div>
+            <div class="pw_section">
+                <div class="pw_section_label pw_collapsible" id="pw_npc_label">
+                    NPC 설정
+                    <span class="pw_collapse_arrow open" id="pw_npc_arrow">▲</span>
+                </div>
+                <div id="pw_npc_content">
+                    <div id="pw_npc_list">${npcItems}</div>
+                    <div class="pw_npc_input_row" ${settings.npcList.length >= 5 ? 'style="display:none;"' : ''}>
+                        <input type="text" id="pw_npc_input" class="pw_npc_input" placeholder="NPC 이름 입력..." />
+                        <button id="pw_npc_add_btn" class="pw_npc_add">+</button>
+                    </div>
+                    <div id="pw_npc_count" style="font-size:10px;color:#aaa;margin-top:4px;">${settings.npcList.length} / 5명</div>
+                </div>
+            </div>
+            <div class="pw_section">
+                <div class="pw_section_label">채팅방별 탭 설정</div>
+                <div id="pw_tab_settings_list"></div>
+                <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 커스텀 탭 추가</button>
+            </div>
+        </div>
+        <div id="pw_settings_modal_footer">
+            <button class="pw_reset_btn" id="pw_modal_reset">초기화</button>
+            <button class="pw_save_btn" id="pw_modal_save">저장</button>
+        </div>
+    `;
+}
+
+function bindSettingsModalEvents(box) {
+    const $box = $(box);
+
+    $box.find('#pw_settings_modal_close').on('click', closeSettingsModal);
+    $box.find('#pw_modal_enabled').on('change', function () {
+        settings.enabled = $(this).prop('checked'); toggleFloatButton();
+    });
+    $box.find('.pw_mood_btn').on('click', function () {
+        $box.find('.pw_mood_btn').removeClass('active');
+        $(this).addClass('active');
+    });
+    $box.find('#pw_add_tab_btn').on('click', () => addCustomTab($box));
+    $box.find('#pw_modal_save').on('click', () => saveModalSettings($box));
+    $box.find('#pw_modal_reset').on('click', () => resetModalSettings($box));
+
+    // NPC 섹션 접기/펼치기
+    $box.find('#pw_npc_label').on('click', function () {
+        const content = $box.find('#pw_npc_content');
+        const arrow = $box.find('#pw_npc_arrow');
+        content.toggle();
+        arrow.toggleClass('open');
+    });
+
+    // NPC 추가
+    $box.find('#pw_npc_add_btn').on('click', () => addNpc($box));
+    $box.find('#pw_npc_input').on('keydown', function (e) {
+        if (e.key === 'Enter') addNpc($box);
+    });
+
+    // NPC 삭제
+    $box.on('click', '.pw_npc_del', function () {
+        const idx = Number($(this).data('idx'));
+        settings.npcList.splice(idx, 1);
+        saveSettings();
+        renderNpcList($box);
+    });
+
+    renderTabSettingsList($box);
+}
+
+function addNpc($box) {
+    const input = $box.find('#pw_npc_input');
+    const name = input.val().trim();
+    if (!name) return;
+    if (settings.npcList.length >= 5) return;
+    settings.npcList.push({ name });
+    saveSettings();
+    input.val('');
+    renderNpcList($box);
+}
+
+function renderNpcList($box) {
+    const list = $box.find('#pw_npc_list');
+    list.empty();
+    settings.npcList.forEach((npc, i) => {
+        list.append(`
+            <div class="pw_npc_item" data-idx="${i}">
+                <span class="pw_npc_name">${escapeHtml(npc.name)}</span>
+                <span class="pw_npc_del" data-idx="${i}">✕</span>
+            </div>
+        `);
+    });
+    $box.find('#pw_npc_count').text(`${settings.npcList.length} / 5명`);
+    if (settings.npcList.length >= 5) {
+        $box.find('.pw_npc_input_row').hide();
+    } else {
+        $box.find('.pw_npc_input_row').show();
+    }
+}
 
 function renderTabSettingsList($box) {
     const $container = $box || $(document);
@@ -287,16 +498,23 @@ function renderTabSettingsList($box) {
     const chatRoomTabs = chatRoom.tabs || {};
 
     settings.tabs.forEach(tab => {
+        if (tab.id === 'group') return; // 그룹챗은 설정 불필요
         const tabSettings = chatRoomTabs[tab.id] || { contextMessages: tab.contextMessages, maxTokens: tab.maxTokens };
         const deleteBtn = !tab.isDefault ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
         const badge = tab.isDefault ? `<span class="pw_tab_badge">기본</span>` : '';
 
         let extraInputs = '';
         if (!tab.isDefault) {
+            const promptPreview = (tab.customPrompt || '').substring(0, 40) + ((tab.customPrompt?.length > 40) ? '...' : '');
             extraInputs = `
                 <div style="margin-top:8px;">
-                    <div style="font-size:11px; color:#888780; margin-bottom:4px;">커스텀 시스템 프롬프트 (비우면 메인탭 프롬프트 사용)</div>
-                    <textarea class="pw_custom_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit; background:#fff;" rows="3" placeholder="비워두면 메인탭 기본 프롬프트 적용...">${tab.customPrompt || ''}</textarea>
+                    <div class="pw_custom_prompt_toggle" data-tabid="${tab.id}" style="font-size:11px;color:#888780;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                        <span>커스텀 프롬프트</span>
+                        <span class="pw_custom_prompt_arrow">▼</span>
+                    </div>
+                    <div class="pw_custom_prompt_area" data-tabid="${tab.id}" style="display:none;margin-top:4px;">
+                        <textarea class="pw_custom_prompt_modal" data-tabid="${tab.id}" style="width:100%;border:1px solid #F4C0D1;border-radius:6px;padding:6px 8px;font-size:11px;resize:none;outline:none;font-family:inherit;background:#fff;" rows="3" placeholder="비워두면 메인탭 기본 프롬프트 적용...">${tab.customPrompt || ''}</textarea>
+                    </div>
                 </div>`;
         }
 
@@ -304,8 +522,7 @@ function renderTabSettingsList($box) {
             <div class="pw_tab_item" data-tabid="${tab.id}">
                 <div class="pw_tab_header">
                     <span class="pw_tab_name">${tab.name}</span>
-                    ${badge}
-                    ${deleteBtn}
+                    ${badge}${deleteBtn}
                 </div>
                 <div class="pw_tab_inputs">
                     <label>메시지 수</label>
@@ -319,21 +536,29 @@ function renderTabSettingsList($box) {
         list.append(item);
     });
 
+    // 커스텀 프롬프트 접기/펼치기
+    list.find('.pw_custom_prompt_toggle').on('click', function () {
+        const tabId = $(this).data('tabid');
+        const area = list.find(`.pw_custom_prompt_area[data-tabid="${tabId}"]`);
+        const arrow = $(this).find('.pw_custom_prompt_arrow');
+        area.toggle();
+        arrow.text(area.is(':visible') ? '▲' : '▼');
+    });
+
     list.find('.pw_tab_delete').on('click', function () {
         deleteTab($(this).data('tabid'));
         if ($box) renderTabSettingsList($box);
     });
 }
 
-function addCustomTab() {
+function addCustomTab($box) {
     const name = prompt('탭 이름을 입력하세요');
     if (!name?.trim()) return;
     const id = 'custom_' + Date.now();
     settings.tabs.push({ id, name: name.trim(), isDefault: false, deletable: true, contextMessages: 10, maxTokens: 1000, customPrompt: '' });
     tabHistories[id] = [];
     saveSettings();
-    const $box = $('#pw_settings_modal_box');
-    if ($box.length) renderTabSettingsList($box);
+    if ($box) renderTabSettingsList($box);
     addTabToPopup(id, name.trim());
 }
 
@@ -341,7 +566,6 @@ function deleteTab(tabId) {
     settings.tabs = settings.tabs.filter(t => t.id !== tabId);
     delete tabHistories[tabId];
     saveSettings();
-    renderTabSettingsList();
     $(`#pw_tab_${tabId}`).remove();
     $(`#pw_content_${tabId}`).remove();
     if (activeTabId === tabId) switchTab('main');
@@ -373,115 +597,11 @@ function saveModalSettings($box) {
     closeSettingsModal();
 }
 
-function resetModalSettings() {
+function resetModalSettings($box) {
     if (!currentChatId) return;
     delete settings.chatRoomSettings[currentChatId];
     saveSettings();
-    const $box = $('#pw_settings_modal_box');
-    renderTabSettingsList($box.length ? $box : null);
-}
-
-function openSettingsModal() {
-    if (document.getElementById('pw_settings_overlay')) return;
-
-    const mobile = isMobile();
-
-    // 오버레이 생성
-    const overlay = document.createElement('div');
-    overlay.id = 'pw_settings_overlay';
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;height:100dvh;z-index:99999;display:flex;background:rgba(0,0,0,0.45);${mobile ? 'align-items:flex-end;justify-content:center;' : 'align-items:center;justify-content:center;overflow-y:auto;padding:20px 0;'}`;
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeSettingsModal(); });
-    overlay.addEventListener('touchstart', e => { if (e.target === overlay) closeSettingsModal(); }, { passive: true });
-
-    // 모달 박스 생성
-    const box = document.createElement('div');
-    box.id = 'pw_settings_modal_box';
-    box.style.cssText = mobile
-        ? 'position:relative;width:100%;max-height:92dvh;border-radius:24px 24px 0 0;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;'
-        : 'position:relative;width:340px;max-width:calc(100vw - 32px);max-height:calc(100vh - 40px);border-radius:16px;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;margin:auto;';
-
-    box.innerHTML = buildSettingsModalHTML();
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    // 이벤트 바인딩
-    bindSettingsModalEvents(box);
-}
-
-function buildSettingsModalHTML() {
-    const moodBtns = [
-        { mood: 'busan', name: '부산깡패', desc: '야 임마!' },
-        { mood: 'normal', name: '일반', desc: '분석 모드' },
-        { mood: 'obsessed', name: '집통소', desc: '유아마인' },
-    ].map(m => `
-        <div class="pw_mood_btn ${settings.mood === m.mood ? 'active' : ''}" data-mood="${m.mood}">
-            <span class="pw_mood_emoji">🍑</span>
-            <span class="pw_mood_name">${m.name}</span>
-            <span class="pw_mood_desc">${m.desc}</span>
-        </div>
-    `).join('');
-
-    return `
-        <div id="pw_settings_modal_header">
-            <span style="font-size:22px;">🍑</span>
-            <div>
-                <div id="pw_settings_modal_title">Peach Whisper</div>
-                <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
-            </div>
-            <span id="pw_settings_modal_version">v1.0.8</span>
-            <button id="pw_settings_modal_close">✕</button>
-        </div>
-        <div id="pw_settings_modal_body">
-            <div class="pw_section">
-                <div class="pw_section_label">기본 설정</div>
-                <div class="pw_row" style="margin-bottom:10px;">
-                    <div>
-                        <div class="pw_row_label">버튼 활성화</div>
-                        <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
-                    </div>
-                    <label class="pw_toggle">
-                        <input type="checkbox" id="pw_modal_enabled" ${settings.enabled ? 'checked' : ''} />
-                        <span class="pw_toggle_track"></span>
-                    </label>
-                </div>
-                <div class="pw_row">
-                    <div class="pw_row_label">채팅창 폰트 크기</div>
-                    <input type="number" id="pw_modal_fontsize" min="10" max="24" value="${settings.fontSize || 13}" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none; background:#fff;" />
-                </div>
-            </div>
-            <div class="pw_section">
-                <div class="pw_section_label">AI 말투</div>
-                <div class="pw_mood_grid">${moodBtns}</div>
-            </div>
-            <div class="pw_section">
-                <div class="pw_section_label">채팅방별 탭 설정</div>
-                <div id="pw_tab_settings_list"></div>
-                <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 커스텀 탭 추가</button>
-            </div>
-        </div>
-        <div id="pw_settings_modal_footer">
-            <button class="pw_reset_btn" id="pw_modal_reset">초기화</button>
-            <button class="pw_save_btn" id="pw_modal_save">저장</button>
-        </div>
-    `;
-}
-
-function bindSettingsModalEvents(box) {
-    const $box = $(box);
-
-    $box.find('#pw_settings_modal_close').on('click', closeSettingsModal);
-    $box.find('#pw_modal_enabled').on('change', function () {
-        settings.enabled = $(this).prop('checked'); toggleFloatButton();
-    });
-    $box.find('.pw_mood_btn').on('click', function () {
-        $box.find('.pw_mood_btn').removeClass('active');
-        $(this).addClass('active');
-    });
-    $box.find('#pw_add_tab_btn').on('click', addCustomTab);
-    $box.find('#pw_modal_save').on('click', function() { saveModalSettings($box); });
-    $box.find('#pw_modal_reset').on('click', resetModalSettings);
-
-    renderTabSettingsList($box);
+    if ($box) renderTabSettingsList($box);
 }
 
 function closeSettingsModal() {
@@ -494,9 +614,24 @@ function injectFloatButton() {
     const btn = $('<div id="pw_float_btn" title="Peach Whisper">🍑</div>');
     $('body').append(btn);
 
+    // 초기 위치: 저장된 위치 없으면 입력창 위로
     if (settings.btnX !== null && settings.btnY !== null) {
         btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
+    } else {
+        // 입력창 위로 초기 위치 계산
+        setTimeout(() => {
+            const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
+            const btnSize = isMobile() ? 38 : 46;
+            const rightOffset = isMobile() ? 12 : 20;
+            if (inputForm) {
+                const rect = inputForm.getBoundingClientRect();
+                const newTop = rect.top - btnSize - 10;
+                const newLeft = window.innerWidth - btnSize - rightOffset;
+                btn.css({ right: 'auto', bottom: 'auto', left: newLeft + 'px', top: newTop + 'px' });
+            }
+        }, 500);
     }
+
     if (!settings.enabled) btn.hide();
 
     let isDragging = false, dragMoved = false, dragStartX, dragStartY, btnStartX, btnStartY;
@@ -554,7 +689,6 @@ function injectPopup() {
     `);
     $('body').append(popup);
 
-    // 저장된 팝업 위치 복원
     if (settings.popupX !== null && settings.popupY !== null) {
         popup.css({ right: 'auto', bottom: 'auto', left: settings.popupX + 'px', top: settings.popupY + 'px' });
     }
@@ -565,7 +699,7 @@ function injectPopup() {
     $('#pw_clear_btn').on('click', clearCurrentTab);
     $('#pw_collapse_btn').on('click', toggleCollapse);
     $('#pw_close_btn').on('click', closePopup);
-    $('#pw_tab_add').on('click', addCustomTab);
+    $('#pw_tab_add').on('click', () => addCustomTab(null));
 
     initResize();
     initPopupDrag();
@@ -581,7 +715,7 @@ function addTabToPopup(tabId, tabName) {
         const simTab = settings.tabs.find(t => t.id === 'sim');
         content = `
             <div class="pw_sim_body">
-                <div class="pw_sim_section" id="pw_sim_prompt_section">
+                <div class="pw_sim_section">
                     <div class="pw_sim_section_header" onclick="window.pwToggleSimPrompt()">
                         <div class="pw_sim_section_title">📋 시뮬 프롬프트</div>
                         <span class="pw_sim_arrow open" id="pw_sim_prompt_arrow">▲</span>
@@ -595,6 +729,27 @@ function addTabToPopup(tabId, tabName) {
                 <div class="pw_input_area">
                     <input type="text" placeholder="추가 지시 입력 (선택)..." id="pw_input_${tabId}" autocomplete="off" />
                     <button class="pw_send_btn" data-tabid="${tabId}">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>`;
+    } else if (tabId === 'group') {
+        content = `
+            <div class="pw_group_body">
+                <div class="pw_sim_section">
+                    <div class="pw_sim_section_header" onclick="window.pwToggleGroupSituation()">
+                        <div class="pw_sim_section_title">📋 상황 설정</div>
+                        <span class="pw_sim_arrow open" id="pw_group_situation_arrow">▲</span>
+                    </div>
+                    <div class="pw_sim_section_content open" id="pw_group_situation_content">
+                        <textarea class="pw_sim_prompt_input" id="pw_group_situation" rows="2" placeholder="상황을 입력하세요... 예: 막스의 아기때 사진이 공개되었다."></textarea>
+                        <button id="pw_group_start_btn">▶ 시작</button>
+                    </div>
+                </div>
+                <div id="pw_group_msgs" class="pw_messages"></div>
+                <div class="pw_input_area">
+                    <input type="text" placeholder="시시로 입력..." id="pw_input_group" autocomplete="off" />
+                    <button class="pw_send_btn" data-tabid="group">
                         <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                 </div>
@@ -616,10 +771,10 @@ function addTabToPopup(tabId, tabName) {
 
     if (tabId === 'sim') {
         window.pwToggleSimPrompt = function() {
-            const content = document.getElementById('pw_sim_prompt_content');
-            const arrow = document.getElementById('pw_sim_prompt_arrow');
-            content.classList.toggle('open');
-            if (arrow) arrow.classList.toggle('open');
+            const c = document.getElementById('pw_sim_prompt_content');
+            const a = document.getElementById('pw_sim_prompt_arrow');
+            c.classList.toggle('open');
+            if (a) a.classList.toggle('open');
         };
         contentEl.find('#pw_sim_prompt').on('input', function () {
             const tab = settings.tabs.find(t => t.id === 'sim');
@@ -628,31 +783,41 @@ function addTabToPopup(tabId, tabName) {
         contentEl.find('#pw_sim_run_btn').on('click', handleSimRun);
     }
 
-    contentEl.find('.pw_send_btn').on('click', function () { handleSend($(this).data('tabid')); });
-    contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(tabId); }
+    if (tabId === 'group') {
+        window.pwToggleGroupSituation = function() {
+            const c = document.getElementById('pw_group_situation_content');
+            const a = document.getElementById('pw_group_situation_arrow');
+            c.classList.toggle('open');
+            if (a) a.classList.toggle('open');
+        };
+        contentEl.find('#pw_group_start_btn').on('click', handleGroupStart);
+    }
+
+    contentEl.find('.pw_send_btn').on('click', function () {
+        const tabId = $(this).data('tabid');
+        if (tabId === 'group') handleGroupSend();
+        else handleSend(tabId);
     });
+    contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (tabId === 'group') handleGroupSend();
+            else handleSend(tabId);
+        }
+    });
+    if (tabId === 'group') {
+        contentEl.find('#pw_input_group').on('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGroupSend(); }
+        });
+    }
 }
 
 // ===== 시뮬 결과 =====
-function getSimResults() {
-    if (!currentChatId) return [];
-    return settings.chatRoomSettings[currentChatId]?.simResults || [];
-}
-
-function setSimResults(results) {
-    if (!currentChatId) return;
-    if (!settings.chatRoomSettings[currentChatId]) settings.chatRoomSettings[currentChatId] = { tabs: {} };
-    settings.chatRoomSettings[currentChatId].simResults = results;
-}
-
 function renderSimResults() {
     const container = $('#pw_sim_results');
     if (!container.length) return;
     container.empty();
-
     const results = getSimResults();
-
     results.forEach((result, idx) => {
         const isLatest = idx === results.length - 1;
         const label = isLatest ? `<span class="pw_sim_result_badge new">최신</span>` : `<span class="pw_sim_result_badge">이전</span>`;
@@ -670,13 +835,11 @@ function renderSimResults() {
                 </div>
             </div>
         `);
-
         item.find('.pw_sim_result_header').on('click', function (e) {
             if ($(e.target).hasClass('pw_sim_result_delete')) return;
             item.find('.pw_sim_result_content').toggleClass('open');
             item.find('.pw_sim_result_arrow').toggleClass('open');
         });
-
         item.find('.pw_sim_result_delete').on('click', function (e) {
             e.stopPropagation();
             const r = getSimResults();
@@ -685,7 +848,6 @@ function renderSimResults() {
             saveSettings();
             renderSimResults();
         });
-
         container.prepend(item);
     });
 }
@@ -705,16 +867,13 @@ function togglePopup() {
 function openPopup() {
     const popup = $('#pw_popup');
     popup.addClass('visible');
-    // 저장된 위치 없으면 기본 위치
     if (settings.popupX === null || settings.popupY === null) {
         const btn = $('#pw_float_btn');
         const btnOffset = btn.offset();
-        const popupH = popup.outerHeight() || 400;
-        const popupW = popup.outerWidth() || 300;
-        let top = (btnOffset?.top || window.innerHeight - 200) - popupH - 10;
+        const popupW = 300;
         let left = (btnOffset?.left || window.innerWidth - 320) + (btn.outerWidth() || 46) / 2 - popupW / 2;
         left = Math.max(8, Math.min(window.innerWidth - popupW - 8, left));
-        top = Math.max(8, top);
+        const top = Math.max(8, (btnOffset?.top || 200) - 420);
         popup.css({ top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' });
     }
     $(`#pw_input_${activeTabId}`).focus();
@@ -729,25 +888,22 @@ function toggleCollapse() {
     const popup = $('#pw_popup');
     const isCollapsed = body.hasClass('collapsed');
     if (isCollapsed) {
-        body.removeClass('collapsed');
-        handle.show();
-        btn.text('∧');
-        popup.removeClass('collapsed');
-        popup.css({ width: '300px', height: '' });
+        body.removeClass('collapsed'); handle.show(); btn.text('∧');
+        popup.removeClass('collapsed'); popup.css({ width: '300px', height: '' });
     } else {
-        body.addClass('collapsed');
-        handle.hide();
-        btn.text('∨');
-        popup.addClass('collapsed');
-        popup.css({ width: 'auto', height: 'auto' });
+        body.addClass('collapsed'); handle.hide(); btn.text('∨');
+        popup.addClass('collapsed'); popup.css({ width: 'auto', height: 'auto' });
     }
 }
 
 async function clearCurrentTab() {
     if (activeTabId === 'sim') {
-        setSimResults([]);
-        saveSettings();
-        renderSimResults();
+        setSimResults([]); saveSettings(); renderSimResults(); return;
+    }
+    if (activeTabId === 'group') {
+        groupChatHistory = []; groupSituation = '';
+        $('#pw_group_msgs').empty();
+        $('#pw_group_situation').val('');
         return;
     }
     tabHistories[activeTabId] = [];
@@ -756,12 +912,37 @@ async function clearCurrentTab() {
     addGreetingMessage(activeTabId);
 }
 
-// ===== 팝업 드래그 (버튼과 독립) =====
+function initResize() {
+    const handle = document.getElementById('pw_resize_handle');
+    const popup = document.getElementById('pw_popup');
+    if (!handle || !popup) return;
+    let isResizing = false, startX, startY, startW, startH;
+    const onStart = (e) => {
+        isResizing = true;
+        const p = e.touches ? e.touches[0] : e;
+        startX = p.clientX; startY = p.clientY;
+        startW = popup.offsetWidth; startH = popup.offsetHeight;
+        e.preventDefault();
+    };
+    const onMove = (e) => {
+        if (!isResizing) return;
+        const p = e.touches ? e.touches[0] : e;
+        popup.style.width = Math.max(260, startW + (p.clientX - startX)) + 'px';
+        popup.style.height = Math.max(200, startH + (p.clientY - startY)) + 'px';
+    };
+    const onEnd = () => { isResizing = false; };
+    handle.addEventListener('mousedown', onStart);
+    handle.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+}
+
 function initPopupDrag() {
     const popup = document.getElementById('pw_popup');
     const header = document.getElementById('pw_popup_header');
     let isDragging = false, startX, startY, origLeft, origTop;
-
     const onStart = (e) => {
         if (e.target.tagName === 'BUTTON') return;
         isDragging = true;
@@ -773,58 +954,21 @@ function initPopupDrag() {
         popup.style.left = origLeft + 'px'; popup.style.top = origTop + 'px';
         e.preventDefault();
     };
-
     const onMove = (e) => {
         if (!isDragging) return;
         const p = e.touches ? e.touches[0] : e;
-        const newLeft = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + p.clientX - startX));
-        const newTop = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + p.clientY - startY));
-        popup.style.left = newLeft + 'px'; popup.style.top = newTop + 'px';
+        popup.style.left = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + p.clientX - startX)) + 'px';
+        popup.style.top = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + p.clientY - startY)) + 'px';
     };
-
     const onEnd = () => {
         if (!isDragging) return;
         isDragging = false;
-        // 팝업 위치 저장
         const rect = popup.getBoundingClientRect();
         settings.popupX = rect.left; settings.popupY = rect.top;
         saveSettings();
     };
-
     header.addEventListener('mousedown', onStart);
     header.addEventListener('touchstart', onStart, { passive: false });
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('mouseup', onEnd);
-    document.addEventListener('touchend', onEnd);
-}
-
-// ===== 리사이즈 (터치 포함) =====
-function initResize() {
-    const handle = document.getElementById('pw_resize_handle');
-    const popup = document.getElementById('pw_popup');
-    if (!handle || !popup) return;
-    let isResizing = false, startX, startY, startW, startH;
-
-    const onStart = (e) => {
-        isResizing = true;
-        const p = e.touches ? e.touches[0] : e;
-        startX = p.clientX; startY = p.clientY;
-        startW = popup.offsetWidth; startH = popup.offsetHeight;
-        e.preventDefault();
-    };
-
-    const onMove = (e) => {
-        if (!isResizing) return;
-        const p = e.touches ? e.touches[0] : e;
-        popup.style.width = Math.max(260, startW + (p.clientX - startX)) + 'px';
-        popup.style.height = Math.max(200, startH + (p.clientY - startY)) + 'px';
-    };
-
-    const onEnd = () => { isResizing = false; };
-
-    handle.addEventListener('mousedown', onStart);
-    handle.addEventListener('touchstart', onStart, { passive: false });
     document.addEventListener('mousemove', onMove);
     document.addEventListener('touchmove', onMove, { passive: false });
     document.addEventListener('mouseup', onEnd);
@@ -887,7 +1031,7 @@ function appendLoading(tabId) {
 
 function appendLoading2(containerId) {
     $(`#${containerId}`).append(`
-        <div id="pw_sim_loading" style="padding:12px; text-align:center;">
+        <div id="pw_sim_loading" style="padding:12px;text-align:center;">
             <div class="pw_loading" style="justify-content:center;"><span></span><span></span><span></span></div>
         </div>
     `);
@@ -895,6 +1039,152 @@ function appendLoading2(containerId) {
 
 function removeLoading(tabId) { $(`#pw_loading_${tabId}`).remove(); }
 function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+
+// ===== 그룹챗 =====
+function appendGroupMessage(sender, text, isUser = false) {
+    const container = $('#pw_group_msgs');
+    if (!container.length) return;
+    const formatted = escapeHtml(text).replace(/\n/g, '<br>');
+    const initial = sender.charAt(0).toUpperCase();
+    if (isUser) {
+        container.append(`
+            <div class="pw_msg_row user">
+                <div class="pw_avatar user">${initial}</div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;max-width:80%;">
+                    <span style="font-size:10px;color:#aaa;">${escapeHtml(sender)}</span>
+                    <div class="pw_bubble user">${formatted}</div>
+                </div>
+            </div>
+        `);
+    } else {
+        container.append(`
+            <div class="pw_msg_row">
+                <div class="pw_avatar" style="background:#f0f0f0;font-size:10px;font-weight:600;color:#555;">${initial}</div>
+                <div style="display:flex;flex-direction:column;gap:2px;max-width:80%;">
+                    <span style="font-size:10px;color:#aaa;">${escapeHtml(sender)}</span>
+                    <div class="pw_bubble">${formatted}</div>
+                </div>
+            </div>
+        `);
+    }
+    container[0].scrollTop = container[0].scrollHeight;
+}
+
+function appendGroupLoading() {
+    const container = $('#pw_group_msgs');
+    container.append(`
+        <div id="pw_group_loading" class="pw_msg_row">
+            <div class="pw_avatar" style="background:#f0f0f0;">...</div>
+            <div class="pw_bubble"><div class="pw_loading"><span></span><span></span><span></span></div></div>
+        </div>
+    `);
+    container[0].scrollTop = container[0].scrollHeight;
+}
+
+async function handleGroupStart() {
+    const situation = $('#pw_group_situation').val().trim();
+    if (!situation) { alert('상황을 입력해주세요.'); return; }
+    if (isGenerating) return;
+
+    groupSituation = situation;
+    groupChatHistory = [];
+    $('#pw_group_msgs').empty();
+
+    // 상황 섹션 자동 접기
+    const c = document.getElementById('pw_group_situation_content');
+    const a = document.getElementById('pw_group_situation_arrow');
+    if (c?.classList.contains('open')) { c.classList.remove('open'); a?.classList.remove('open'); }
+
+    isGenerating = true;
+    $('#pw_group_start_btn').prop('disabled', true);
+    appendGroupLoading();
+
+    try {
+        const response = await generateGroupResponse('');
+        $('#pw_group_loading').remove();
+        parseAndRenderGroupResponse(response);
+    } catch (err) {
+        $('#pw_group_loading').remove();
+        console.error(`[${EXTENSION_NAME}] 그룹챗 오류:`, err);
+    } finally {
+        isGenerating = false;
+        $('#pw_group_start_btn').prop('disabled', false);
+    }
+}
+
+async function handleGroupSend() {
+    if (isGenerating || !groupSituation) return;
+    const input = $('#pw_input_group');
+    const text = input.val().trim();
+    if (!text) return;
+
+    input.val('');
+    const ctx = SillyTavern.getContext();
+    const char = ctx.characters?.[ctx.characterId];
+    const userName = ctx.name2 || '시시';
+    appendGroupMessage(userName, text, true);
+    groupChatHistory.push({ role: 'user', content: `${userName}: ${text}` });
+
+    isGenerating = true;
+    $(`.pw_send_btn[data-tabid="group"]`).prop('disabled', true);
+    appendGroupLoading();
+
+    try {
+        const response = await generateGroupResponse(text);
+        $('#pw_group_loading').remove();
+        parseAndRenderGroupResponse(response);
+    } catch (err) {
+        $('#pw_group_loading').remove();
+        console.error(`[${EXTENSION_NAME}] 그룹챗 오류:`, err);
+    } finally {
+        isGenerating = false;
+        $(`.pw_send_btn[data-tabid="group"]`).prop('disabled', false);
+    }
+}
+
+function parseAndRenderGroupResponse(text) {
+    const lines = text.split('\n').filter(l => l.trim());
+    lines.forEach(line => {
+        const match = line.match(/^(.+?):\s*(.+)$/);
+        if (match) {
+            groupChatHistory.push({ role: 'assistant', content: line });
+            appendGroupMessage(match[1].trim(), match[2].trim(), false);
+        }
+    });
+}
+
+async function generateGroupResponse(userMessage) {
+    const tabSettings = getTabSettings('group');
+    const contextText = await buildContextText(tabSettings.contextMessages);
+    const systemPrompt = buildGroupChatSystemPrompt(groupSituation, settings.npcList, contextText);
+
+    const historyForAI = groupChatHistory.slice(-20).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        content: msg.content,
+    }));
+
+    if (settings.source === 'main') {
+        const { generateRaw } = globalContext;
+        if (!generateRaw) throw new Error('generateRaw 사용 불가');
+        const result = await generateRaw({ systemPrompt, prompt: userMessage || '대화를 시작해주세요.', streaming: false });
+        return result || '';
+    } else {
+        if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
+        const messages = [
+            { role: 'user', content: systemPrompt },
+            { role: 'model', content: '알겠습니다.' },
+            ...historyForAI,
+            { role: 'user', content: userMessage || '대화를 시작해주세요.' },
+        ];
+        const response = await globalContext.ConnectionManagerRequestService.sendRequest(
+            settings.profileId, messages, tabSettings.maxTokens,
+            { stream: false, extractData: true, includePreset: false, includeInstruct: false }
+        );
+        if (typeof response === 'string') return response;
+        if (response?.choices?.[0]?.message?.content) return response.choices[0].message.content;
+        return response?.content || response?.message || '';
+    }
+}
 
 // ===== 전송 =====
 async function handleSend(tabId) {
@@ -927,7 +1217,6 @@ async function handleSimRun() {
     const simPrompt = $('#pw_sim_prompt').val().trim();
     if (!simPrompt) { alert('시뮬 프롬프트를 입력해주세요.'); return; }
 
-    // 실행 시 프롬프트 섹션 자동 접기
     const promptContent = document.getElementById('pw_sim_prompt_content');
     const promptArrow = document.getElementById('pw_sim_prompt_arrow');
     if (promptContent?.classList.contains('open')) {
@@ -961,7 +1250,7 @@ async function handleSimRun() {
 async function generateResponse(tabId, userMessage) {
     const tabSettings = getTabSettings(tabId);
     const contextText = await buildContextText(tabSettings.contextMessages);
-    const systemPrompt = getSystemPrompt(tabId, contextText);
+    const systemPrompt = getSystemPrompt(tabId, contextText, tabSettings.maxTokens);
     const history = (tabHistories[tabId] || []).slice(-20).map(msg => ({
         role: msg.role === 'assistant' ? 'model' : msg.role,
         content: msg.content,
@@ -970,11 +1259,7 @@ async function generateResponse(tabId, userMessage) {
     if (settings.source === 'main') {
         const { generateRaw } = globalContext;
         if (!generateRaw) throw new Error('generateRaw 사용 불가');
-        const result = await generateRaw({
-            systemPrompt,
-            prompt: userMessage || ' ',
-            streaming: false,
-        });
+        const result = await generateRaw({ systemPrompt, prompt: userMessage || ' ', streaming: false });
         return result || '응답을 받지 못했습니다.';
     } else {
         if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
@@ -994,19 +1279,18 @@ async function generateResponse(tabId, userMessage) {
     }
 }
 
-function getSystemPrompt(tabId, contextText) {
-    if (tabId === 'help') return buildHelpSystemPrompt(contextText);
+function getSystemPrompt(tabId, contextText, maxTokens) {
+    if (tabId === 'help') return buildHelpSystemPrompt(contextText, maxTokens);
     if (tabId === 'sim') return buildSimSystemPrompt($('#pw_sim_prompt').val() || '', contextText);
-    if (tabId === 'main') return buildMainSystemPrompt(settings.mood, contextText);
+    if (tabId === 'main') return buildMainSystemPrompt(settings.mood, contextText, maxTokens);
     const tab = settings.tabs.find(t => t.id === tabId);
-    return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText);
+    return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText, maxTokens);
 }
 
 async function buildContextText(maxMessages = 10) {
     const ctx = SillyTavern.getContext();
     let text = '';
 
-    // 페르소나
     try {
         const pu = ctx.powerUser || globalContext.power_user;
         const ua = globalContext.user_avatar;
@@ -1019,7 +1303,6 @@ async function buildContextText(maxMessages = 10) {
         }
     } catch (e) {}
 
-    // 캐릭터 카드
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
@@ -1041,7 +1324,6 @@ async function buildContextText(maxMessages = 10) {
         text += '\n';
     }
 
-    // 글로벌 로어북
     try {
         const chat = ctx.chat || [];
         const chatTexts = chat.map(m => m.mes).filter(Boolean);
@@ -1053,11 +1335,9 @@ async function buildContextText(maxMessages = 10) {
         }
     } catch (e) {}
 
-    // 작가 노트
     const authorNote = ctx.chatMetadata?.note_prompt || '';
     if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
 
-    // 채팅 로그
     const chat = ctx.chat || [];
     const startIdx = Math.max(0, chat.length - maxMessages);
     const recentChat = chat.slice(startIdx);
@@ -1077,6 +1357,9 @@ async function buildContextText(maxMessages = 10) {
 function initEventListeners() {
     globalContext.eventSource.on(event_types.CHAT_CHANGED, async () => {
         currentChatId = globalContext.getCurrentChatId?.() || 'default';
+        groupChatHistory = [];
+        groupSituation = '';
+        $('#pw_group_msgs').empty();
         tabHistories = {};
         settings.tabs.forEach(tab => { tabHistories[tab.id] = []; });
         await restoreHistories();
