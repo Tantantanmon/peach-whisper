@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.6 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.7 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -225,7 +225,8 @@ async function restoreHistories() {
     for (const tab of settings.tabs) {
         if (tab.id === 'sim') {
             tabHistories[tab.id] = [];
-            renderSimResults();
+            // 채팅방 전환 후 renderSimResults는 DOM 준비 후 호출
+            setTimeout(() => renderSimResults(), 100);
             continue;
         }
         const history = await loadHistory(tab.id);
@@ -291,7 +292,7 @@ function injectSettingsModal() {
                         <div id="pw_settings_modal_title">Peach Whisper</div>
                         <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
                     </div>
-                    <span id="pw_settings_modal_version">v1.0.6</span>
+                    <span id="pw_settings_modal_version">v1.0.7</span>
                     <button id="pw_settings_modal_close">✕</button>
                 </div>
                 <div id="pw_settings_modal_body">
@@ -464,10 +465,25 @@ function openSettingsModal() {
     $('#pw_settings_modal .pw_mood_btn').removeClass('active');
     $(`#pw_settings_modal .pw_mood_btn[data-mood="${settings.mood}"]`).addClass('active');
     renderTabSettingsList();
-    $('#pw_settings_modal').addClass('visible');
+
+    const modal = $('#pw_settings_modal');
+    const box = $('#pw_settings_modal_box');
+
+    if (isMobile()) {
+        modal.css({ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0' });
+        box.css({ width: '100%', maxWidth: '100%', maxHeight: '92dvh', borderRadius: '24px 24px 0 0', margin: '0' });
+    } else {
+        modal.css({ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' });
+        box.css({ width: '340px', maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', borderRadius: '16px', margin: 'auto' });
+    }
+
+    modal.addClass('visible');
 }
 
-function closeSettingsModal() { $('#pw_settings_modal').removeClass('visible'); }
+function closeSettingsModal() {
+    $('#pw_settings_modal').removeClass('visible').css('display', '');
+    $('#pw_settings_modal_box').css({ width: '', maxWidth: '', maxHeight: '', borderRadius: '', margin: '' });
+}
 
 // ===== 플로팅 버튼 =====
 function injectFloatButton() {
@@ -616,13 +632,23 @@ function addTabToPopup(tabId, tabName) {
 }
 
 // ===== 시뮬 결과 =====
+function getSimResults() {
+    if (!currentChatId) return [];
+    return settings.chatRoomSettings[currentChatId]?.simResults || [];
+}
+
+function setSimResults(results) {
+    if (!currentChatId) return;
+    if (!settings.chatRoomSettings[currentChatId]) settings.chatRoomSettings[currentChatId] = { tabs: {} };
+    settings.chatRoomSettings[currentChatId].simResults = results;
+}
+
 function renderSimResults() {
     const container = $('#pw_sim_results');
     if (!container.length) return;
     container.empty();
 
-    const simTab = settings.tabs.find(t => t.id === 'sim');
-    const results = simTab?.simResults || [];
+    const results = getSimResults();
 
     results.forEach((result, idx) => {
         const isLatest = idx === results.length - 1;
@@ -650,7 +676,9 @@ function renderSimResults() {
 
         item.find('.pw_sim_result_delete').on('click', function (e) {
             e.stopPropagation();
-            simTab.simResults.splice(Number($(this).data('idx')), 1);
+            const r = getSimResults();
+            r.splice(Number($(this).data('idx')), 1);
+            setSimResults(r);
             saveSettings();
             renderSimResults();
         });
@@ -714,8 +742,9 @@ function toggleCollapse() {
 
 async function clearCurrentTab() {
     if (activeTabId === 'sim') {
-        const simTab = settings.tabs.find(t => t.id === 'sim');
-        if (simTab) { simTab.simResults = []; saveSettings(); renderSimResults(); }
+        setSimResults([]);
+        saveSettings();
+        renderSimResults();
         return;
     }
     tabHistories[activeTabId] = [];
@@ -910,10 +939,10 @@ async function handleSimRun() {
     try {
         const response = await generateResponse('sim', '');
         $('#pw_sim_loading').remove();
-        const simTab = settings.tabs.find(t => t.id === 'sim');
-        if (!simTab.simResults) simTab.simResults = [];
-        simTab.simResults.push(response);
-        if (simTab.simResults.length > 3) simTab.simResults.shift();
+        const results = getSimResults();
+        results.push(response);
+        if (results.length > 3) results.shift();
+        setSimResults(results);
         saveSettings();
         renderSimResults();
     } catch (err) {
