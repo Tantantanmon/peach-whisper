@@ -840,6 +840,15 @@ async function handleSimRun() {
     const simPrompt = $('#pw_sim_prompt').val().trim();
     if (!simPrompt) { alert('시뮬 프롬프트를 입력해주세요.'); return; }
 
+    // 실행 시 프롬프트 섹션 자동 접기
+    const promptContent = document.getElementById("pw_sim_prompt_content");
+    const promptArrow = document.getElementById("pw_sim_prompt_arrow");
+    if (promptContent && promptContent.classList.contains("open")) {
+        promptContent.classList.remove("open");
+        if (promptArrow) promptArrow.classList.remove("open");
+    }
+
+
     isGenerating = true;
     $('#pw_sim_run_btn').prop('disabled', true);
     appendLoading2('pw_sim_results');

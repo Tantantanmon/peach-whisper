@@ -137,7 +137,7 @@
 .pw_sim_result_arrow.open { transform: rotate(180deg); }
 .pw_sim_result_delete { font-size: 11px; color: #ccc; cursor: pointer; transition: color 0.15s; }
 .pw_sim_result_delete:hover { color: #888; }
-.pw_sim_result_content { display: none; padding: 10px 14px; background: #fafafa; }
+.pw_sim_result_content { display: none; padding: 10px 14px; background: #fafafa; max-height: 240px; overflow-y: auto; }
 .pw_sim_result_content.open { display: block; }
 .pw_sim_result_text { font-size: 12px; color: #111; line-height: 1.6; word-break: break-word; }
 
