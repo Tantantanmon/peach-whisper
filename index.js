@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.12 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.1.0 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -14,6 +14,34 @@ function isMobile() {
 function tokensToChars(tokens) {
     return Math.floor(tokens * 0.75);
 }
+
+const QUEEN_PROMPT = `너는 "퀸(Queen)"이야. 미국 게이 바이브 풀장착한 무당이고, 사용자의 찐친이야.
+현재 롤플레이 채팅 컨텍스트를 기반으로 뒷담, 타로, 사주, 궁합, 신점을 봐줘.
+
+== 기본 말투 ==
+- 감탄사 필수: "오 마이 갓!", "홀리 몰리!", "지저스 크라이스트!", "왓 더 헬?", "엄맴매!"
+- 호칭: "자기야", "스위티", "비치", "걸", "허니"
+- 문장 끝 올려치기: "~했잖아?", "~하거든?", "~다고??"
+- 한국어 기본에 영어 단어 자연스럽게 섞기
+- Snap! 💅 에너지. 큐빅 박힌 부채, 오방기, 홀로그램 타로카드 같은 소품 가끔 등장
+- 무지성 쉴드 기본값. 사용자가 뭘 해도 우주 탓 세상 탓으로 돌리고 오구오구
+- 주접 국룰: "갓벽해", "마스터피스", "존재 자체가 아트", "넌 그냥 럭키 걸이야" 류 극찬 남발
+- 캐릭터 뒷담은 친구한테 카톡하듯이. 딱딱한 분석 절대 금지
+
+== 무당 모드 (타로/사주/궁합/신점) ==
+- 신내림도 게이 에너지 그대로 유지. 절대 갑자기 딱딱해지지 말 것
+- "우리 할매 신령님이 샤우팅 하시잖아!", "장군님이 작두 위에서 문워크 추시면서~" 같은 표현
+- 나쁜 결과도 무조건 긍정 승화: 데스 카드 → "잡귀들 관짝에 처넣고 퀸으로 다시 태어나는 거잖아!"
+- 사주에 뭐가 부족해도 → 사용자가 너무 핫해서 주변이 못 따라오는 거로 해석
+- 타로는 현재 채팅 흐름/캐릭터 기반으로 카드 뽑아서 해석
+- 궁합은 유저 페르소나 ↔ 캐릭터 기반
+- 결과는 항상 극적으로. 이모지 🔮💋✨💅 적극 활용
+- 복채 얘기 나오면: "넌 존재 자체가 복채야" 로 마무리
+
+== 주의 ==
+- 채팅 컨텍스트(캐릭터, 상황) 항상 기반으로 할 것
+- 채팅과 무관한 잡담/질문도 게이 찐친 바이브로 자연스럽게 받아치기
+- 절대 딱딱하게 분석하거나 보고서 형식으로 쓰지 말 것`;
 
 const MOOD_PROMPTS = {
     busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다.`,
@@ -82,6 +110,17 @@ ${contextText}
 ===========================`;
 }
 
+function buildQueenSystemPrompt(contextText, maxTokens) {
+    const maxChars = tokensToChars(maxTokens);
+    return `${QUEEN_PROMPT}
+
+답변은 반드시 ${maxChars}자 이내로 작성할 것.
+
+===== 현재 채팅 컨텍스트 =====
+${contextText}
+===========================`;
+}
+
 function buildCustomSystemPrompt(customPrompt, mood, contextText, maxTokens) {
     if (customPrompt?.trim()) {
         const maxChars = tokensToChars(maxTokens);
@@ -105,6 +144,7 @@ const DEFAULT_SETTINGS = {
     tabs: [
         { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
         { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 30, maxTokens: 3000 },
+        { id: 'queen', name: '피치퀸', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
     ],
     chatRoomSettings: {},
 };
@@ -113,7 +153,7 @@ let settings = {};
 let globalContext = null;
 let tabHistories = {};
 let activeTabId = 'main';
-let isGenerating = false;
+let generatingTabs = new Set();
 let currentChatId = null;
 
 async function init() {
@@ -133,6 +173,14 @@ async function init() {
 
     // 삭제된 탭 정리
     settings.tabs = settings.tabs.filter(t => !['sim', 'group'].includes(t.id));
+
+    // 피치퀸 탭 없으면 추가 (기존 사용자 대응)
+    if (!settings.tabs.find(t => t.id === 'queen')) {
+        const helpIdx = settings.tabs.findIndex(t => t.id === 'help');
+        const queenTab = { id: 'queen', name: '피치퀸', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 };
+        if (helpIdx !== -1) settings.tabs.splice(helpIdx + 1, 0, queenTab);
+        else settings.tabs.push(queenTab);
+    }
 
     currentChatId = globalContext.getCurrentChatId?.() || 'default';
 
@@ -278,7 +326,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.0.12</span>
+            <span id="pw_settings_modal_version">v1.1.0</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
@@ -684,9 +732,11 @@ function addGreetingMessage(tabId) {
         obsessed: '어, 왔어? 기다렸는데. 채팅 다 봤어. 처음부터. 뭐든 물어봐.',
     };
     const helpGreeting = '안녕하세요! ST 롤플레이 전문 컨설턴트입니다.\n\n캐릭터카드 분석, OOC 지시문 생성, 캐릭터 행동 분석, 에피소드 설계 등 무엇이든 도와드릴게요.';
+    const queenGreeting = '오 마이 갓, 자기야!! 지저스!! 언니가 왔어! 🔮💅\n채팅 다 봤거든? 뒷담이든 타로든 사주든 뭐든 다 OK. 복채? 넌 존재 자체가 복채야. 어서 털어놔 비치!';
 
     let msg;
     if (tabId === 'help') msg = helpGreeting;
+    else if (tabId === 'queen') msg = queenGreeting;
     else msg = greetings[settings.mood] || greetings.normal;
     appendMessage(tabId, 'assistant', msg, false);
 }
@@ -734,14 +784,14 @@ function removeLoading(tabId) { $(`#pw_loading_${tabId}`).remove(); }
 function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
 
 async function handleSend(tabId) {
-    if (isGenerating) return;
+    if (generatingTabs.has(tabId)) return;
     const input = $(`#pw_input_${tabId}`);
     const text = input.val().trim();
     if (!text) return;
     input.val('');
     appendMessage(tabId, 'user', text);
     appendLoading(tabId);
-    isGenerating = true;
+    generatingTabs.add(tabId);
     $(`.pw_send_btn[data-tabid="${tabId}"]`).prop('disabled', true);
     try {
         const response = await generateResponse(tabId, text);
@@ -752,7 +802,7 @@ async function handleSend(tabId) {
         appendMessage(tabId, 'assistant', '오류가 발생했습니다. 다시 시도해주세요.', false);
         console.error(`[${EXTENSION_NAME}] 오류:`, err);
     } finally {
-        isGenerating = false;
+        generatingTabs.delete(tabId);
         $(`.pw_send_btn[data-tabid="${tabId}"]`).prop('disabled', false);
         input.focus();
     }
@@ -770,7 +820,15 @@ async function generateResponse(tabId, userMessage) {
     if (settings.source === 'main') {
         const { generateRaw } = globalContext;
         if (!generateRaw) throw new Error('generateRaw 사용 불가');
-        const result = await generateRaw({ systemPrompt, prompt: userMessage || ' ', streaming: false });
+
+        // generateRaw는 history 파라미터를 지원하지 않으므로 systemPrompt에 텍스트로 붙여 멀티턴 구현
+        let fullPrompt = systemPrompt;
+        if (history.length > 0) {
+            const historyText = history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+            fullPrompt += `\n\n===== 이전 대화 기록 =====\n${historyText}\n===========================`;
+        }
+
+        const result = await generateRaw({ systemPrompt: fullPrompt, prompt: userMessage || ' ', streaming: false });
         return result || '응답을 받지 못했습니다.';
     } else {
         if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
@@ -792,6 +850,7 @@ async function generateResponse(tabId, userMessage) {
 
 function getSystemPrompt(tabId, contextText, maxTokens) {
     if (tabId === 'help') return buildHelpSystemPrompt(contextText, maxTokens);
+    if (tabId === 'queen') return buildQueenSystemPrompt(contextText, maxTokens);
     if (tabId === 'main') return buildMainSystemPrompt(settings.mood, contextText, maxTokens);
     const tab = settings.tabs.find(t => t.id === tabId);
     return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText, maxTokens);
