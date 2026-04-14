@@ -62,7 +62,7 @@
 #pw_float_btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
 /* 채팅 팝업 */
-#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.08); display: none; flex-direction: column; }
+#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; max-height: 80vh; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.08); display: none; flex-direction: column; height: auto; }
 #pw_popup.visible { display: flex; }
 #pw_popup_header { background: #fff; padding: 8px 14px; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; gap: 14px; cursor: grab; flex-shrink: 0; user-select: none; }
 #pw_popup_header button { font-size: 12px; color: #bbb; cursor: pointer; background: none; border: none; padding: 2px; transition: color 0.15s; line-height: 1; }
@@ -83,7 +83,7 @@
 .pw_tab_content.active { display: flex; }
 
 /* 메시지 */
-.pw_messages { padding: 14px; display: flex; flex-direction: column; gap: 12px; max-height: 220px; overflow-y: auto; background: #fff; flex: 1; }
+.pw_messages { padding: 14px; display: flex; flex-direction: column; gap: 12px; max-height: 50vh; overflow-y: auto; background: #fff; flex: 1; }
 .pw_msg_row { display: flex; gap: 8px; align-items: flex-start; }
 .pw_msg_row.user { flex-direction: row-reverse; }
 .pw_avatar { width: 26px; height: 26px; border-radius: 50%; background: #f2f2f2; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
@@ -134,7 +134,7 @@
 .pw_sim_result_arrow.open { transform: rotate(180deg); }
 .pw_sim_result_delete { font-size: 11px; color: #ccc; cursor: pointer; transition: color 0.15s; }
 .pw_sim_result_delete:hover { color: #888; }
-.pw_sim_result_content { display: none; padding: 10px 14px; background: #fafafa; max-height: 240px; overflow-y: auto; }
+.pw_sim_result_content { display: none; padding: 10px 14px; background: #fafafa; max-height: 40vh; overflow-y: auto; }
 .pw_sim_result_content.open { display: block; }
 .pw_sim_result_text { font-size: 12px; color: #111; line-height: 1.6; word-break: break-word; }
 

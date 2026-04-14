@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.9 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.10 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -368,7 +368,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.0.9</span>
+            <span id="pw_settings_modal_version">v1.0.10</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
