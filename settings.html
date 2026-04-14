@@ -6,10 +6,9 @@
         </div>
         <div class="inline-drawer-content">
 
-            <!-- API 소스 -->
             <div>
                 <label for="pw_source">API 소스</label>
-                <small class="notes">OOC 어시스턴트에 사용할 API를 선택하세요</small>
+                <small class="notes">채팅 분석 어시스턴트에 사용할 API를 선택하세요</small>
             </div>
             <select id="pw_source" class="text_pole pw_source_select">
                 <option value="main">Main API (현재 채팅 API)</option>
@@ -22,27 +21,19 @@
 
             <hr class="m-t-1 m-b-1">
 
-            <!-- 최근 메시지 수 -->
             <div>
-                <label for="pw_context_messages">최근 메시지 수</label>
-                <small class="notes">분석에 참고할 최근 메시지 개수 (기본 10개)</small>
+                <label for="pw_context_messages">최근 메시지 수 (기본값)</label>
+                <small class="notes">채팅방별 설정이 없을 때 사용</small>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-                <input type="range" id="pw_context_messages" min="5" max="50" step="1" value="10" style="flex: 1;" />
-                <span id="pw_context_messages_val" style="min-width: 32px; font-weight: 500;">10개</span>
-            </div>
+            <input id="pw_context_messages" type="number" class="text_pole" min="1" max="100" value="10" style="width:80px;" />
 
             <hr class="m-t-1 m-b-1">
 
-            <!-- 최대 토큰 수 -->
             <div>
-                <label for="pw_max_tokens">최대 응답 토큰 수</label>
-                <small class="notes">응답이 잘릴 경우 높여주세요 (기본 1000)</small>
+                <label for="pw_max_tokens">최대 응답 토큰 수 (기본값)</label>
+                <small class="notes">응답이 잘릴 경우 높여주세요</small>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-                <input type="range" id="pw_max_tokens" min="256" max="4096" step="256" value="1000" style="flex: 1;" />
-                <span id="pw_max_tokens_val" style="min-width: 40px; font-weight: 500;">1000</span>
-            </div>
+            <input id="pw_max_tokens" type="number" class="text_pole" min="256" max="8192" step="256" value="1000" style="width:80px;" />
 
         </div>
     </div>
