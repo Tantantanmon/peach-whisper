@@ -1,312 +1,153 @@
-/* ===== Peach Whisper v1.0.2 ===== */
+/* ===== Peach Whisper v1.0.4 ===== */
 
 /* 설정 모달 */
-#pw_settings_modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-}
+#pw_settings_modal { display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; }
 #pw_settings_modal.visible { display: flex; }
-#pw_settings_modal_overlay {
-    position: absolute; inset: 0;
-    background: rgba(0,0,0,0.4);
-}
+#pw_settings_modal_overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); }
 #pw_settings_modal_box {
-    position: relative;
-    background: #fff;
-    border: 1px solid #f2c4ce;
-    border-radius: 16px;
-    width: 340px;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    z-index: 1;
+    position: relative; background: #fff;
+    border: 1px solid #f2c4ce; border-radius: 16px;
+    width: 340px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 40px); overflow-y: auto; z-index: 1;
 }
 #pw_settings_modal_header {
-    background: #fff5f7;
-    padding: 14px 16px;
+    background: #fff; padding: 14px 16px;
     border-bottom: 1px solid #fce8ee;
     display: flex; align-items: center; gap: 10px;
     position: sticky; top: 0; z-index: 1;
 }
 #pw_settings_modal_title { font-size: 14px; font-weight: 500; color: #2C2C2A; }
 #pw_settings_modal_sub { font-size: 11px; color: #993556; margin-top: 1px; }
-#pw_settings_modal_version {
-    font-size: 10px; background: #FBEAF0; color: #993556;
-    border: 1px solid #F4C0D1; border-radius: 99px;
-    padding: 2px 8px; margin-left: auto;
-}
-#pw_settings_modal_close {
-    font-size: 14px; color: #D4537E; cursor: pointer;
-    background: none; border: none; padding: 2px 4px;
-}
-.pw_section { padding: 14px 16px; border-bottom: 1px solid #fce8ee; }
-.pw_section_label {
-    font-size: 10px; color: #D4537E; font-weight: 500;
-    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px;
-    display: flex; align-items: center; gap: 6px;
-}
+#pw_settings_modal_version { font-size: 10px; background: #FBEAF0; color: #993556; border: 1px solid #F4C0D1; border-radius: 99px; padding: 2px 8px; margin-left: auto; }
+#pw_settings_modal_close { font-size: 14px; color: #D4537E; cursor: pointer; background: none; border: none; padding: 2px 4px; }
+.pw_section { padding: 14px 16px; border-bottom: 1px solid #fce8ee; background: #fff; }
+.pw_section_label { font-size: 10px; color: #D4537E; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 .pw_row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pw_row_label { font-size: 13px; color: #2C2C2A; }
 .pw_row_sub { font-size: 11px; color: #888780; margin-top: 2px; }
 .pw_toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
 .pw_toggle input { opacity: 0; width: 0; height: 0; }
-.pw_toggle_track {
-    position: absolute; inset: 0;
-    background: #F4C0D1; border-radius: 99px; cursor: pointer; transition: background 0.2s;
-}
-.pw_toggle_track:before {
-    content: ''; position: absolute;
-    width: 16px; height: 16px; left: 3px; top: 3px;
-    background: white; border-radius: 50%; transition: transform 0.2s;
-}
+.pw_toggle_track { position: absolute; inset: 0; background: #F4C0D1; border-radius: 99px; cursor: pointer; transition: background 0.2s; }
+.pw_toggle_track:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
 .pw_toggle input:checked + .pw_toggle_track { background: #D4537E; }
 .pw_toggle input:checked + .pw_toggle_track:before { transform: translateX(16px); }
-
-/* 말투 그리드 */
 .pw_mood_grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.pw_mood_btn {
-    border: 1px solid #F4C0D1; border-radius: 12px;
-    padding: 12px 6px 10px; text-align: center; cursor: pointer;
-    background: #fff; transition: all 0.15s;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-}
+.pw_mood_btn { border: 1px solid #F4C0D1; border-radius: 12px; padding: 12px 6px 10px; text-align: center; cursor: pointer; background: #fff; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .pw_mood_btn:hover { background: #FBEAF0; border-color: #D4537E; }
 .pw_mood_btn.active { background: #FBEAF0; border-color: #D4537E; }
 .pw_mood_emoji { font-size: 20px; line-height: 1; }
 .pw_mood_name { font-size: 11px; font-weight: 500; color: #993556; }
 .pw_mood_desc { font-size: 10px; color: #D4537E; }
-
-/* 채팅방 탭 설정 */
-.pw_tab_item {
-    background: #fff5f7; border: 1px solid #fce8ee;
-    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
-}
+.pw_tab_item { background: #fff; border: 1px solid #fce8ee; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
 .pw_tab_item:last-of-type { margin-bottom: 0; }
 .pw_tab_header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .pw_tab_name { font-size: 12px; font-weight: 500; color: #993556; flex: 1; }
-.pw_tab_badge {
-    font-size: 9px; background: #FBEAF0; color: #D4537E;
-    border: 1px solid #F4C0D1; border-radius: 99px; padding: 1px 6px;
-}
+.pw_tab_badge { font-size: 9px; background: #FBEAF0; color: #D4537E; border: 1px solid #F4C0D1; border-radius: 99px; padding: 1px 6px; }
 .pw_tab_delete { font-size: 11px; color: #D4537E; background: none; border: none; cursor: pointer; opacity: 0.5; }
 .pw_tab_delete:hover { opacity: 1; }
 .pw_tab_inputs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pw_tab_inputs label { font-size: 11px; color: #888780; white-space: nowrap; }
-.pw_num_input {
-    width: 64px; border: 1px solid #F4C0D1; border-radius: 6px;
-    padding: 5px 8px; font-size: 12px; color: #2C2C2A;
-    background: #fff; outline: none; text-align: center;
-}
-.pw_add_tab_btn {
-    width: 100%; margin-top: 8px; padding: 8px;
-    border: 1px dashed #F4C0D1; border-radius: 10px;
-    background: none; color: #D4537E; font-size: 12px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.pw_add_tab_btn:hover { background: #FBEAF0; border-color: #D4537E; }
-
-#pw_settings_modal_footer {
-    padding: 12px 16px; background: #fff5f7;
-    border-top: 1px solid #fce8ee;
-    display: flex; justify-content: flex-end; gap: 8px;
-    position: sticky; bottom: 0;
-}
-.pw_reset_btn {
-    background: #fff; color: #993556; border: 1px solid #F4C0D1;
-    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
-}
-.pw_save_btn {
-    background: #D4537E; color: white; border: none;
-    border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 500; cursor: pointer;
-}
+.pw_num_input { width: 64px; border: 1px solid #F4C0D1; border-radius: 6px; padding: 5px 8px; font-size: 12px; color: #2C2C2A; background: #fff; outline: none; text-align: center; }
+.pw_add_tab_btn { width: 100%; margin-top: 8px; padding: 8px; border: 1px dashed #F4C0D1; border-radius: 10px; background: none; color: #D4537E; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.pw_add_tab_btn:hover { background: #FBEAF0; }
+#pw_settings_modal_footer { padding: 12px 16px; background: #fff; border-top: 1px solid #fce8ee; display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0; }
+.pw_reset_btn { background: #fff; color: #993556; border: 1px solid #F4C0D1; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+.pw_save_btn { background: #D4537E; color: white; border: none; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 500; cursor: pointer; }
 .pw_save_btn:hover { background: #993556; }
 
-/* ===== 플로팅 버튼 ===== */
-#pw_float_btn {
-    position: fixed; bottom: 120px; right: 20px;
-    width: 46px; height: 46px; border-radius: 50%;
-    background: #fff; border: 1px solid #e0e0e0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; cursor: grab; z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: box-shadow 0.15s; line-height: 1; user-select: none;
-}
-#pw_float_btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+/* 플로팅 버튼 */
+#pw_float_btn { position: fixed; bottom: 120px; right: 20px; width: 46px; height: 46px; border-radius: 50%; background: #fff; border: 0.5px solid #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: grab; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.08); transition: box-shadow 0.15s; line-height: 1; user-select: none; }
+#pw_float_btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
-/* ===== 채팅 팝업 ===== */
-#pw_popup {
-    position: fixed; bottom: 176px; right: 20px;
-    width: 300px; background: #fff;
-    border: 1px solid #e8e8e8; border-radius: 14px;
-    overflow: hidden; z-index: 999;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    display: none; flex-direction: column;
-}
+/* 채팅 팝업 */
+#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 8px 32px rgba(0,0,0,0.08); display: none; flex-direction: column; }
 #pw_popup.visible { display: flex; }
 
-/* 헤더 */
-#pw_popup_header {
-    background: #fafafa; padding: 7px 12px;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex; align-items: center; justify-content: flex-end;
-    gap: 12px; cursor: grab; flex-shrink: 0; user-select: none;
-}
-#pw_popup_header button {
-    font-size: 13px; color: #888; cursor: pointer;
-    background: none; border: none; padding: 2px 4px;
-    transition: color 0.15s; line-height: 1;
-}
-#pw_popup_header button:hover { color: #333; }
+#pw_popup_header { background: #fff; padding: 8px 14px; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; gap: 14px; cursor: grab; flex-shrink: 0; user-select: none; }
+#pw_popup_header button { font-size: 12px; color: #bbb; cursor: pointer; background: none; border: none; padding: 2px; transition: color 0.15s; line-height: 1; }
+#pw_popup_header button:hover { color: #555; }
 
-/* 접기 시 팝업 - 헤더만 남기고 완전히 줄어들게 */
 #pw_popup_body { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 #pw_popup_body.collapsed { display: none; }
-#pw_popup.collapsed {
-    width: auto !important;
-    height: auto !important;
-    min-width: 0;
-    overflow: visible;
-}
+#pw_popup.collapsed { width: auto !important; height: auto !important; }
 
 /* 탭 바 */
-#pw_tab_bar {
-    display: flex; align-items: center;
-    padding: 0 10px; border-bottom: 1px solid #f0f0f0;
-    background: #fff; flex-shrink: 0; overflow-x: auto;
-}
+#pw_tab_bar { display: flex; padding: 0 14px; border-bottom: 0.5px solid #f0f0f0; background: #fff; flex-shrink: 0; overflow-x: auto; }
 #pw_tab_bar::-webkit-scrollbar { display: none; }
-.pw_tab {
-    padding: 8px 12px; font-size: 11px; color: #aaa;
-    cursor: pointer; border-bottom: 2px solid transparent;
-    white-space: nowrap; transition: all 0.15s; user-select: none;
-    display: flex; align-items: center; gap: 4px;
-}
-.pw_tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; font-weight: 500; }
+.pw_tab { padding: 9px 12px; font-size: 11px; color: #bbb; cursor: pointer; border-bottom: 1.5px solid transparent; white-space: nowrap; transition: all 0.15s; letter-spacing: 0.01em; user-select: none; }
+.pw_tab.active { color: #111; border-bottom-color: #111; font-weight: 500; }
 .pw_tab:hover:not(.active) { color: #555; }
-.pw_tab_close_btn {
-    font-size: 10px; color: #ccc; cursor: pointer;
-    padding: 0 2px; transition: color 0.15s;
-}
-.pw_tab_close_btn:hover { color: #888; }
-#pw_tab_add {
-    padding: 8px; font-size: 14px; color: #ccc;
-    cursor: pointer; margin-left: auto; flex-shrink: 0; user-select: none;
-}
+#pw_tab_add { padding: 9px 8px; font-size: 13px; color: #ddd; cursor: pointer; margin-left: auto; flex-shrink: 0; user-select: none; }
 #pw_tab_add:hover { color: #888; }
 
-/* 탭 콘텐츠 */
 .pw_tab_content { display: none; flex-direction: column; flex: 1; min-height: 0; }
 .pw_tab_content.active { display: flex; }
 
-/* 메시지 영역 */
-.pw_messages {
-    padding: 12px; display: flex; flex-direction: column;
-    gap: 10px; max-height: 220px; overflow-y: auto;
-    background: #fff; flex: 1;
-}
+/* 메시지 */
+.pw_messages { padding: 14px; display: flex; flex-direction: column; gap: 12px; max-height: 220px; overflow-y: auto; background: #fff; flex: 1; }
 .pw_msg_row { display: flex; gap: 8px; align-items: flex-start; }
 .pw_msg_row.user { flex-direction: row-reverse; }
-.pw_avatar {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #f0f0f0; display: flex; align-items: center;
-    justify-content: center; font-size: 13px; flex-shrink: 0;
-}
-.pw_avatar.user {
-    background: #e8e8e8; font-size: 10px;
-    color: #555; font-weight: 600;
-}
-.pw_bubble {
-    background: #f5f5f5;
-    border-radius: 0 10px 10px 10px;
-    padding: 8px 12px; font-size: 13px; color: #1a1a1a;
-    max-width: 82%; line-height: 1.6; word-break: break-word;
-}
-.pw_bubble.user {
-    background: #1a1a1a;
-    border-radius: 10px 0 10px 10px;
-    color: #fff;
-}
+.pw_avatar { width: 26px; height: 26px; border-radius: 50%; background: #f2f2f2; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.pw_avatar.user { background: #111; font-size: 10px; color: #fff; font-weight: 600; letter-spacing: -0.5px; }
+.pw_bubble { background: #f7f7f7; border-radius: 0 12px 12px 12px; padding: 9px 13px; font-size: 13px; color: #111; max-width: 84%; line-height: 1.6; word-break: break-word; }
+.pw_bubble.user { background: #111; border-radius: 12px 0 12px 12px; color: #fff; }
 
 /* 로딩 */
 .pw_loading { display: flex; gap: 4px; align-items: center; padding: 4px 2px; }
-.pw_loading span {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #888; animation: pw_bounce 1.2s infinite ease-in-out; opacity: 0.4;
-}
+.pw_loading span { width: 6px; height: 6px; border-radius: 50%; background: #888; animation: pw_bounce 1.2s infinite ease-in-out; opacity: 0.4; }
 .pw_loading span:nth-child(1) { animation-delay: 0s; }
 .pw_loading span:nth-child(2) { animation-delay: 0.2s; }
 .pw_loading span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes pw_bounce {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
-    40% { transform: scale(1); opacity: 1; }
-}
-
-/* 시뮬 프롬프트 영역 */
-.pw_sim_prompt_area {
-    padding: 10px 12px; border-bottom: 1px solid #f0f0f0;
-    background: #fafafa; flex-shrink: 0;
-}
-.pw_sim_prompt_label {
-    font-size: 10px; color: #888; font-weight: 500;
-    letter-spacing: 0.05em; text-transform: uppercase;
-    margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;
-}
-.pw_sim_prompt_label span { font-size: 9px; color: #aaa; text-transform: none; letter-spacing: 0; font-weight: normal; }
-.pw_sim_prompt_input {
-    width: 100%; border: 1px solid #e8e8e8; border-radius: 8px;
-    padding: 7px 10px; font-size: 11px; background: #fff;
-    color: #1a1a1a; outline: none; resize: none;
-    font-family: inherit; line-height: 1.5;
-}
-.pw_sim_prompt_input::placeholder { color: #bbb; }
+@keyframes pw_bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
 
 /* 입력창 */
-.pw_input_area {
-    display: flex; gap: 8px; align-items: center;
-    padding: 10px 12px; border-top: 1px solid #f0f0f0;
-    background: #fff; flex-shrink: 0;
-}
-.pw_input_area input {
-    flex: 1; border: 1px solid #e8e8e8; border-radius: 8px;
-    padding: 7px 12px; font-size: 12px;
-    background: #fafafa; color: #1a1a1a; outline: none;
-}
-.pw_input_area input::placeholder { color: #bbb; }
-.pw_send_btn {
-    width: 30px; height: 30px; border-radius: 8px;
-    background: #1a1a1a; border: none;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0; transition: background 0.15s;
-}
+.pw_input_area { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-top: 0.5px solid #f0f0f0; background: #fff; flex-shrink: 0; }
+.pw_input_area input { flex: 1; border: 0.5px solid #e8e8e8; border-radius: 10px; padding: 8px 12px; font-size: 12px; background: #fafafa; color: #111; outline: none; font-family: inherit; }
+.pw_input_area input::placeholder { color: #ccc; }
+.pw_send_btn { width: 32px; height: 32px; border-radius: 10px; background: #111; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s; }
 .pw_send_btn:hover { background: #333; }
 .pw_send_btn svg { width: 13px; height: 13px; }
 
-/* 리사이즈 핸들 */
-#pw_resize_handle {
-    position: absolute; bottom: 0; right: 0;
-    width: 14px; height: 14px; cursor: se-resize;
-    background: linear-gradient(135deg, transparent 50%, #ddd 50%);
-    border-bottom-right-radius: 14px;
-}
+/* 시뮬 탭 */
+.pw_sim_body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.pw_sim_section { border-bottom: 0.5px solid #f0f0f0; flex-shrink: 0; }
+.pw_sim_section_header { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; cursor: pointer; background: #fafafa; user-select: none; }
+.pw_sim_section_header:hover { background: #f5f5f5; }
+.pw_sim_section_title { font-size: 11px; font-weight: 500; color: #555; }
+.pw_sim_arrow { font-size: 10px; color: #bbb; transition: transform 0.2s; display: inline-block; }
+.pw_sim_arrow.open { transform: rotate(180deg); }
+.pw_sim_section_content { display: none; padding: 10px 14px; }
+.pw_sim_section_content.open { display: block; }
+.pw_sim_prompt_input { width: 100%; border: 0.5px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; font-size: 11px; background: #fafafa; color: #111; outline: none; resize: none; font-family: inherit; line-height: 1.5; }
+.pw_sim_prompt_input::placeholder { color: #ccc; }
+#pw_sim_run_btn { width: 100%; margin-top: 6px; padding: 8px; background: #111; color: white; border: none; border-radius: 8px; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+#pw_sim_run_btn:hover { background: #333; }
+#pw_sim_run_btn:disabled { background: #ccc; cursor: not-allowed; }
 
-/* ===== 모바일 ===== */
+/* 시뮬 결과 */
+#pw_sim_results { flex-shrink: 0; }
+.pw_sim_result_item { border-bottom: 0.5px solid #f0f0f0; }
+.pw_sim_result_header { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; cursor: pointer; user-select: none; }
+.pw_sim_result_header:hover { background: #fafafa; }
+.pw_sim_result_title { font-size: 11px; color: #555; display: flex; align-items: center; gap: 6px; }
+.pw_sim_result_badge { font-size: 9px; background: #f0f0f0; color: #888; border-radius: 99px; padding: 1px 6px; }
+.pw_sim_result_badge.new { background: #111; color: #fff; }
+.pw_sim_result_actions { display: flex; align-items: center; gap: 10px; }
+.pw_sim_result_arrow { font-size: 10px; color: #bbb; transition: transform 0.2s; display: inline-block; }
+.pw_sim_result_arrow.open { transform: rotate(180deg); }
+.pw_sim_result_delete { font-size: 11px; color: #ccc; cursor: pointer; transition: color 0.15s; }
+.pw_sim_result_delete:hover { color: #888; }
+.pw_sim_result_content { display: none; padding: 10px 14px; background: #fafafa; }
+.pw_sim_result_content.open { display: block; }
+.pw_sim_result_text { font-size: 12px; color: #111; line-height: 1.6; word-break: break-word; }
+
+/* 리사이즈 */
+#pw_resize_handle { position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: se-resize; background: linear-gradient(135deg, transparent 50%, #ddd 50%); border-bottom-right-radius: 16px; }
+
+/* 모바일 */
 @media (max-width: 768px) {
     #pw_float_btn { width: 36px; height: 36px; font-size: 18px; bottom: 110px; right: 12px; }
     #pw_popup { width: calc(100vw - 24px); left: 12px; right: 12px; bottom: 156px; }
     .pw_messages { max-height: 160px; }
     .pw_bubble { font-size: 12px; }
 }
-
-/* 시뮬 실행 버튼 */
-#pw_sim_run_btn {
-    width: 100%; margin-top: 6px;
-    padding: 7px; background: #1a1a1a; color: white;
-    border: none; border-radius: 8px; font-size: 12px;
-    cursor: pointer; transition: background 0.15s;
-}
-#pw_sim_run_btn:hover { background: #333; }
-#pw_sim_run_btn:disabled { background: #aaa; cursor: not-allowed; }

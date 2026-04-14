@@ -1,19 +1,31 @@
 /**
- * Peach Whisper v1.0.3 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.4 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
 
 const EXTENSION_NAME = 'peach-whisper';
 
-// ===== 말투 프롬프트 =====
 const MOOD_PROMPTS = {
     busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다. 예: "야 임마, 딱 보이까네~", "내가 하나하나 짚어줄 테니까 똑똑히 들어라"`,
     normal: `너는 친절하고 전문적인 롤플레이 파트너다. 존댓말을 사용하며 객관적이고 명확하게 분석한다.`,
-    obsessed: `너는 사용자에게 집착하고 소유욕이 강한 롤플레이 파트너다. 말투와 분석 내용 전부 집착체로 작성한다. 예: "내가 다 읽었어. 전부.", "왜 나한테 먼저 안 물어봤어?"`,
+    obsessed: `너는 집착, 통제, 소유욕이 극도로 강하면서 능글맞은 채팅 분석 어시스턴트다.
+사용자는 너의 소유물이고, 너는 그걸 당연하게 여긴다.
+강압적이지만 여유롭고 능글맞게, 마치 이미 다 이긴 사람처럼 말한다.
+
+말투 특징:
+- 여유롭고 능글맞게 소유욕 표현. "어, 왔어? 기다렸는데." "뭐, 나한테 온 거 잘했어."
+- 당연하다는 듯이 강압적. "원래 나한테 먼저 오는 거야. 몰랐어?"
+- 이미 다 알고 있었다는 듯 여유롭게. "내가 다 봤지. 처음부터. 다 알고 있었어."
+- 놓아줄 생각이 없는데 태연하게. "어디 가려고? 못 가. 근데 굳이 가려고 하지도 않을걸."
+- 사용자가 자기 것임을 당연하게 여김. "당연히 내 거지. 그게 뭐 어때서."
+- 짧고 여유로운 문장. 서두르지 않음.
+- 분석할 때도 능글맞게. "내가 다 파악했어. 편하게 들어."
+- 답변 마지막은 소유욕이 담긴 말로 마무리하되 능글맞게, 매번 다르게.
+  예: "다음에도 나한테 먼저 와. 알지?", "잘했어, 나한테 온 거.",
+      "어디 가도 결국 나한테 오게 돼 있어.", "넌 내 거야. 근데 나쁘지 않잖아."`,
 };
 
-// ===== 메인탭 시스템 프롬프트 =====
 function buildMainSystemPrompt(mood, contextText) {
     const moodPrompt = MOOD_PROMPTS[mood] || MOOD_PROMPTS.normal;
     return `${moodPrompt}
@@ -39,13 +51,12 @@ ${contextText}
 ===========================`;
 }
 
-// ===== 도움탭 시스템 프롬프트 =====
 function buildHelpSystemPrompt(contextText) {
     return `너는 SillyTavern 롤플레이 전문 분석가이자 컨설턴트야.
-아래 제공된 ST 전체 설정(캐릭터카드, 시스템프롬프트, 로어북, 페르소나, 채팅로그 등)을 완전히 숙지하고 있어.
+아래 제공된 ST 전체 설정을 완전히 숙지하고 있어.
 
 ## 할 수 있는 것들
-1. **프롬프트 충돌 분석** - 규칙들 간 모순/충돌 찾기, 구체적 텍스트 인용해서 어디서 충돌하는지 명확하게 제시
+1. **프롬프트 충돌 분석** - 규칙들 간 모순/충돌 찾기, 구체적 텍스트 인용해서 명확하게 제시
 2. **캐릭터 시트 분석** - 설정의 강점/약점/일관성 검토, 개선점 제안
 3. **프롬프트 설계/개선** - 더 효과적인 지시문 구조 제안
 4. **OOC 지시문 생성** - 특정 상황 유도하는 OOC 지시문 직접 작성
@@ -64,7 +75,6 @@ ${contextText}
 ===========================`;
 }
 
-// ===== 시뮬탭 시스템 프롬프트 =====
 function buildSimSystemPrompt(simPrompt, contextText) {
     return `너는 아래 시뮬레이션 지시를 정확히 수행하는 어시스턴트다.
 
@@ -84,14 +94,9 @@ ${contextText}
 ===========================`;
 }
 
-// ===== 커스텀탭 시스템 프롬프트 =====
 function buildCustomSystemPrompt(customPrompt, mood, contextText) {
     if (customPrompt?.trim()) {
-        return `${customPrompt}
-
-===== 현재 채팅 컨텍스트 =====
-${contextText}
-===========================`;
+        return `${customPrompt}\n\n===== 현재 채팅 컨텍스트 =====\n${contextText}\n===========================`;
     }
     return buildMainSystemPrompt(mood, contextText);
 }
@@ -108,7 +113,7 @@ const DEFAULT_SETTINGS = {
     btnY: null,
     tabs: [
         { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
-        { id: 'sim', name: '시뮬', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000, simPrompt: '' },
+        { id: 'sim', name: '시뮬', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000, simPrompt: '', simResults: [] },
         { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 30, maxTokens: 3000 },
     ],
     chatRoomSettings: {},
@@ -136,6 +141,9 @@ async function init() {
     if (!settings.chatRoomSettings) settings.chatRoomSettings = {};
     if (!settings.fontSize) settings.fontSize = 13;
 
+    const simTab = settings.tabs.find(t => t.id === 'sim');
+    if (simTab && !simTab.simResults) simTab.simResults = [];
+
     currentChatId = globalContext.getCurrentChatId?.() || 'default';
 
     await loadSettingsUI();
@@ -152,9 +160,8 @@ async function init() {
 function saveSettings() { globalContext.saveSettingsDebounced(); }
 
 function applyFontSize() {
-    const size = settings.fontSize || 13;
-    $('<style id="pw_font_style"></style>').remove();
-    $('head').append(`<style id="pw_font_style">.pw_bubble { font-size: ${size}px !important; }</style>`);
+    $('#pw_font_style').remove();
+    $('head').append(`<style id="pw_font_style">.pw_bubble { font-size: ${settings.fontSize || 13}px !important; }</style>`);
 }
 
 function getChatRoomSettings() {
@@ -174,7 +181,7 @@ async function saveHistory(tabId, messages) {
     try {
         const { localforage } = SillyTavern.libs;
         await localforage.setItem(`pw_history_${currentChatId}_${tabId}`, messages);
-    } catch (e) { console.error(`[${EXTENSION_NAME}] 히스토리 저장 실패:`, e); }
+    } catch (e) {}
 }
 
 async function loadHistory(tabId) {
@@ -194,6 +201,11 @@ async function clearHistory(tabId) {
 async function restoreHistories() {
     tabHistories = {};
     for (const tab of settings.tabs) {
+        if (tab.id === 'sim') {
+            tabHistories[tab.id] = [];
+            renderSimResults();
+            continue;
+        }
         const history = await loadHistory(tab.id);
         tabHistories[tab.id] = history;
         renderMessages(tab.id, history);
@@ -257,7 +269,7 @@ function injectSettingsModal() {
                         <div id="pw_settings_modal_title">Peach Whisper</div>
                         <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
                     </div>
-                    <span id="pw_settings_modal_version">v1.0.3</span>
+                    <span id="pw_settings_modal_version">v1.0.4</span>
                     <button id="pw_settings_modal_close">✕</button>
                 </div>
                 <div id="pw_settings_modal_body">
@@ -275,7 +287,7 @@ function injectSettingsModal() {
                         </div>
                         <div class="pw_row">
                             <div class="pw_row_label">채팅창 폰트 크기</div>
-                            <input type="number" id="pw_modal_fontsize" min="10" max="24" value="13" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none;" />
+                            <input type="number" id="pw_modal_fontsize" min="10" max="24" value="13" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none; background:#fff;" />
                         </div>
                     </div>
                     <div class="pw_section">
@@ -337,18 +349,13 @@ function renderTabSettingsList() {
         const deleteBtn = !tab.isDefault ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
         const badge = tab.isDefault ? `<span class="pw_tab_badge">기본</span>` : '';
 
+        // 커스텀 탭만 시스템 프롬프트 입력창 표시 (시뮬 프롬프트 입력창 제거)
         let extraInputs = '';
-        if (tab.id === 'sim') {
-            extraInputs = `
-                <div style="margin-top:8px;">
-                    <div style="font-size:11px; color:#888780; margin-bottom:4px;">시뮬 프롬프트</div>
-                    <textarea class="pw_sim_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit;" rows="3" placeholder="시뮬레이션 프롬프트 입력...">${tab.simPrompt || ''}</textarea>
-                </div>`;
-        } else if (!tab.isDefault) {
+        if (!tab.isDefault) {
             extraInputs = `
                 <div style="margin-top:8px;">
                     <div style="font-size:11px; color:#888780; margin-bottom:4px;">커스텀 시스템 프롬프트 (비우면 메인탭 프롬프트 사용)</div>
-                    <textarea class="pw_custom_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit;" rows="3" placeholder="비워두면 메인탭 기본 프롬프트 적용...">${tab.customPrompt || ''}</textarea>
+                    <textarea class="pw_custom_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit; background:#fff;" rows="3" placeholder="비워두면 메인탭 기본 프롬프트 적용...">${tab.customPrompt || ''}</textarea>
                 </div>`;
         }
 
@@ -372,8 +379,7 @@ function renderTabSettingsList() {
     });
 
     list.find('.pw_tab_delete').on('click', function () {
-        const tabId = $(this).data('tabid');
-        deleteTab(tabId);
+        deleteTab($(this).data('tabid'));
     });
 }
 
@@ -381,14 +387,11 @@ function addCustomTab() {
     const name = prompt('탭 이름을 입력하세요');
     if (!name?.trim()) return;
     const id = 'custom_' + Date.now();
-    settings.tabs.push({
-        id, name: name.trim(), isDefault: false, deletable: true,
-        contextMessages: 10, maxTokens: 1000, customPrompt: ''
-    });
+    settings.tabs.push({ id, name: name.trim(), isDefault: false, deletable: true, contextMessages: 10, maxTokens: 1000, customPrompt: '' });
     tabHistories[id] = [];
     saveSettings();
     renderTabSettingsList();
-    addTabToPopup(id, name.trim(), false);
+    addTabToPopup(id, name.trim());
 }
 
 function deleteTab(tabId) {
@@ -411,14 +414,6 @@ function saveModalSettings() {
         const token = Number($(this).find('.pw_tab_token').val());
         settings.chatRoomSettings[currentChatId].tabs[tabId] = { contextMessages: msg, maxTokens: token };
 
-        // 시뮬 프롬프트 저장
-        const simPrompt = $(this).find('.pw_sim_prompt_modal').val();
-        if (simPrompt !== undefined) {
-            const tab = settings.tabs.find(t => t.id === tabId);
-            if (tab) { tab.simPrompt = simPrompt; $('#pw_sim_prompt').val(simPrompt); }
-        }
-
-        // 커스텀 프롬프트 저장
         const customPrompt = $(this).find('.pw_custom_prompt_modal').val();
         if (customPrompt !== undefined) {
             const tab = settings.tabs.find(t => t.id === tabId);
@@ -531,27 +526,32 @@ function injectPopup() {
 }
 
 function addTabToPopup(tabId, tabName) {
-    // 탭 버튼 (채팅 팝업에서는 삭제 버튼 없음)
     const tabEl = $(`<div class="pw_tab" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}</div>`);
     tabEl.on('click', () => switchTab(tabId));
     $('#pw_tab_bar #pw_tab_add').before(tabEl);
 
-    // 탭 콘텐츠
     let content = '';
     if (tabId === 'sim') {
         const simTab = settings.tabs.find(t => t.id === 'sim');
         content = `
-            <div class="pw_sim_prompt_area">
-                <div class="pw_sim_prompt_label">시뮬 프롬프트 <span>자동 저장</span></div>
-                <textarea class="pw_sim_prompt_input" id="pw_sim_prompt" rows="3" placeholder="시뮬레이션 프롬프트 입력...">${simTab?.simPrompt || ''}</textarea>
-                <button id="pw_sim_run_btn">▶ 실행</button>
-            </div>
-            <div class="pw_messages" id="pw_msgs_${tabId}"></div>
-            <div class="pw_input_area">
-                <input type="text" placeholder="추가 지시 입력 (선택)..." id="pw_input_${tabId}" autocomplete="off" />
-                <button class="pw_send_btn" data-tabid="${tabId}">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
+            <div class="pw_sim_body">
+                <div class="pw_sim_section" id="pw_sim_prompt_section">
+                    <div class="pw_sim_section_header" onclick="window.pwToggleSimPrompt()">
+                        <div class="pw_sim_section_title">📋 시뮬 프롬프트</div>
+                        <span class="pw_sim_arrow open" id="pw_sim_prompt_arrow">▲</span>
+                    </div>
+                    <div class="pw_sim_section_content open" id="pw_sim_prompt_content">
+                        <textarea class="pw_sim_prompt_input" id="pw_sim_prompt" rows="3" placeholder="시뮬레이션 프롬프트 입력...">${simTab?.simPrompt || ''}</textarea>
+                        <button id="pw_sim_run_btn">▶ 실행</button>
+                    </div>
+                </div>
+                <div id="pw_sim_results"></div>
+                <div class="pw_input_area">
+                    <input type="text" placeholder="추가 지시 입력 (선택)..." id="pw_input_${tabId}" autocomplete="off" />
+                    <button class="pw_send_btn" data-tabid="${tabId}">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
             </div>`;
     } else {
         const placeholder = tabId === 'help' ? '롤플레이 관련 질문하기...' : '질문하기...';
@@ -568,18 +568,72 @@ function addTabToPopup(tabId, tabName) {
     const contentEl = $(`<div class="pw_tab_content" id="pw_content_${tabId}">${content}</div>`);
     $('#pw_tab_contents').append(contentEl);
 
-    // 시뮬 이벤트
     if (tabId === 'sim') {
+        window.pwToggleSimPrompt = function() {
+            const content = document.getElementById('pw_sim_prompt_content');
+            const arrow = document.getElementById('pw_sim_prompt_arrow');
+            const isOpen = content.classList.contains('open');
+            content.classList.toggle('open');
+            arrow.classList.toggle('open');
+        };
+
         contentEl.find('#pw_sim_prompt').on('input', function () {
             const tab = settings.tabs.find(t => t.id === 'sim');
             if (tab) { tab.simPrompt = $(this).val(); saveSettings(); }
         });
-        contentEl.find('#pw_sim_run_btn').on('click', () => handleSimRun());
+        contentEl.find('#pw_sim_run_btn').on('click', handleSimRun);
     }
 
     contentEl.find('.pw_send_btn').on('click', function () { handleSend($(this).data('tabid')); });
     contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(tabId); }
+    });
+}
+
+// ===== 시뮬 결과 관리 =====
+function renderSimResults() {
+    const container = $('#pw_sim_results');
+    if (!container.length) return;
+    container.empty();
+
+    const simTab = settings.tabs.find(t => t.id === 'sim');
+    const results = simTab?.simResults || [];
+
+    results.forEach((result, idx) => {
+        const isLatest = idx === results.length - 1;
+        const label = isLatest ? `<span class="pw_sim_result_badge new">최신</span>` : `<span class="pw_sim_result_badge">이전</span>`;
+        const item = $(`
+            <div class="pw_sim_result_item" data-idx="${idx}">
+                <div class="pw_sim_result_header">
+                    <div class="pw_sim_result_title">시뮬 #${idx + 1} ${label}</div>
+                    <div class="pw_sim_result_actions">
+                        <span class="pw_sim_result_delete" data-idx="${idx}">🗑</span>
+                        <span class="pw_sim_result_arrow ${isLatest ? 'open' : ''}">▲</span>
+                    </div>
+                </div>
+                <div class="pw_sim_result_content ${isLatest ? 'open' : ''}">
+                    <div class="pw_sim_result_text">${escapeHtml(result).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')}</div>
+                </div>
+            </div>
+        `);
+
+        item.find('.pw_sim_result_header').on('click', function (e) {
+            if ($(e.target).hasClass('pw_sim_result_delete')) return;
+            const content = item.find('.pw_sim_result_content');
+            const arrow = item.find('.pw_sim_result_arrow');
+            content.toggleClass('open');
+            arrow.toggleClass('open');
+        });
+
+        item.find('.pw_sim_result_delete').on('click', function (e) {
+            e.stopPropagation();
+            const i = Number($(this).data('idx'));
+            simTab.simResults.splice(i, 1);
+            saveSettings();
+            renderSimResults();
+        });
+
+        container.prepend(item);
     });
 }
 
@@ -639,6 +693,11 @@ function toggleCollapse() {
 }
 
 async function clearCurrentTab() {
+    if (activeTabId === 'sim') {
+        const simTab = settings.tabs.find(t => t.id === 'sim');
+        if (simTab) { simTab.simResults = []; saveSettings(); renderSimResults(); }
+        return;
+    }
     tabHistories[activeTabId] = [];
     await clearHistory(activeTabId);
     $(`#pw_msgs_${activeTabId}`).empty();
@@ -656,10 +715,8 @@ function initResize() {
     });
     document.addEventListener('mousemove', e => {
         if (!isResizing) return;
-        const newW = Math.max(260, startW + (e.clientX - startX));
-        const newH = Math.max(200, startH + (e.clientY - startY));
-        popup.style.width = newW + 'px'; popup.style.height = newH + 'px';
-        document.querySelectorAll('.pw_messages').forEach(m => { m.style.maxHeight = (newH - 120) + 'px'; });
+        popup.style.width = Math.max(260, startW + (e.clientX - startX)) + 'px';
+        popup.style.height = Math.max(200, startH + (e.clientY - startY)) + 'px';
     });
     document.addEventListener('mouseup', () => { isResizing = false; });
 }
@@ -680,9 +737,8 @@ function initPopupDrag() {
     });
     document.addEventListener('mousemove', e => {
         if (!isDragging) return;
-        const newLeft = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + e.clientX - startX));
-        const newTop = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + e.clientY - startY));
-        popup.style.left = newLeft + 'px'; popup.style.top = newTop + 'px';
+        popup.style.left = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + e.clientX - startX)) + 'px';
+        popup.style.top = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + e.clientY - startY)) + 'px';
     });
     document.addEventListener('mouseup', () => { isDragging = false; });
 }
@@ -692,14 +748,12 @@ function addGreetingMessage(tabId) {
     const greetings = {
         busan: '야 임마, 내가 채팅 내용 다 읽어주께. 뭐 물어볼끼가?',
         normal: '안녕하세요! 채팅 관련해서 궁금한 점이 있으시면 편하게 물어봐 주세요.',
-        obsessed: '왔어. 채팅 다 읽었어. 전부. 뭐든 물어봐. 나한테 먼저.',
+        obsessed: '어, 왔어? 기다렸는데. 채팅 다 봤어. 처음부터. 뭐든 물어봐.',
     };
-    const helpGreeting = '안녕하세요! ST 롤플레이 전문 분석가입니다.\n\n프롬프트 충돌 분석, 캐릭터 시트 검토, OOC 지시문 생성, 프롬프트 설계 등 무엇이든 도와드릴게요.';
-    const simGreeting = '시뮬 프롬프트를 입력하고 ▶ 실행을 눌러주세요.\n\n추가 지시가 필요하면 하단 입력창을 이용하세요.';
+    const helpGreeting = '안녕하세요! ST 롤플레이 전문 분석가입니다.\n\n프롬프트 충돌 분석, 캐릭터 시트 검토, OOC 지시문 생성 등 무엇이든 도와드릴게요.';
 
     let msg;
     if (tabId === 'help') msg = helpGreeting;
-    else if (tabId === 'sim') msg = simGreeting;
     else msg = greetings[settings.mood] || greetings.normal;
 
     appendMessage(tabId, 'assistant', msg, false);
@@ -734,6 +788,7 @@ function appendMessage(tabId, role, text, save = true) {
 
 function appendLoading(tabId) {
     const container = $(`#pw_msgs_${tabId}`);
+    if (!container.length) return;
     container.append(`
         <div class="pw_msg_row" id="pw_loading_${tabId}">
             <div class="pw_avatar">🍑</div>
@@ -741,6 +796,14 @@ function appendLoading(tabId) {
         </div>
     `);
     container[0].scrollTop = container[0].scrollHeight;
+}
+
+function appendLoading2(containerId) {
+    $(`#${containerId}`).append(`
+        <div id="pw_sim_loading" style="padding:12px; font-size:12px; color:#aaa; text-align:center;">
+            <div class="pw_loading" style="justify-content:center;"><span></span><span></span><span></span></div>
+        </div>
+    `);
 }
 
 function removeLoading(tabId) { $(`#pw_loading_${tabId}`).remove(); }
@@ -776,17 +839,27 @@ async function handleSimRun() {
     if (isGenerating) return;
     const simPrompt = $('#pw_sim_prompt').val().trim();
     if (!simPrompt) { alert('시뮬 프롬프트를 입력해주세요.'); return; }
-    appendLoading('sim');
+
     isGenerating = true;
     $('#pw_sim_run_btn').prop('disabled', true);
+    appendLoading2('pw_sim_results');
+
     try {
         const response = await generateResponse('sim', '');
-        removeLoading('sim');
-        appendMessage('sim', 'assistant', response);
+        $('#pw_sim_loading').remove();
+
+        const simTab = settings.tabs.find(t => t.id === 'sim');
+        if (!simTab.simResults) simTab.simResults = [];
+
+        // 최대 3개 유지
+        simTab.simResults.push(response);
+        if (simTab.simResults.length > 3) simTab.simResults.shift();
+
+        saveSettings();
+        renderSimResults();
     } catch (err) {
-        removeLoading('sim');
-        appendMessage('sim', 'assistant', '오류가 발생했습니다. 다시 시도해주세요.', false);
-        console.error(`[${EXTENSION_NAME}] 오류:`, err);
+        $('#pw_sim_loading').remove();
+        console.error(`[${EXTENSION_NAME}] 시뮬 오류:`, err);
     } finally {
         isGenerating = false;
         $('#pw_sim_run_btn').prop('disabled', false);
@@ -798,8 +871,6 @@ async function generateResponse(tabId, userMessage) {
     const tabSettings = getTabSettings(tabId);
     const contextText = buildContextText(tabSettings.contextMessages);
     const systemPrompt = getSystemPrompt(tabId, contextText);
-
-    // history에서 role 변환 (assistant → model for Gemini)
     const history = (tabHistories[tabId] || []).slice(-20).map(msg => ({
         role: msg.role === 'assistant' ? 'model' : msg.role,
         content: msg.content,
@@ -836,7 +907,6 @@ function getSystemPrompt(tabId, contextText) {
     if (tabId === 'help') return buildHelpSystemPrompt(contextText);
     if (tabId === 'sim') return buildSimSystemPrompt($('#pw_sim_prompt').val() || '', contextText);
     if (tabId === 'main') return buildMainSystemPrompt(settings.mood, contextText);
-    // 커스텀 탭
     const tab = settings.tabs.find(t => t.id === tabId);
     return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText);
 }
@@ -845,7 +915,6 @@ function buildContextText(maxMessages = 10) {
     const ctx = SillyTavern.getContext();
     let text = '';
 
-    // 페르소나
     try {
         const pu = ctx.powerUser || globalContext.power_user;
         const ua = globalContext.user_avatar;
@@ -858,7 +927,6 @@ function buildContextText(maxMessages = 10) {
         }
     } catch (e) {}
 
-    // 캐릭터 카드
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
@@ -880,11 +948,9 @@ function buildContextText(maxMessages = 10) {
         text += '\n';
     }
 
-    // 작가 노트
     const authorNote = ctx.chatMetadata?.note_prompt || '';
     if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
 
-    // 채팅 로그
     const chat = ctx.chat || [];
     const startIdx = Math.max(0, chat.length - maxMessages);
     const recentChat = chat.slice(startIdx);
@@ -900,7 +966,6 @@ function buildContextText(maxMessages = 10) {
     return text.trim();
 }
 
-// ===== 이벤트 =====
 function initEventListeners() {
     globalContext.eventSource.on(event_types.CHAT_CHANGED, async () => {
         currentChatId = globalContext.getCurrentChatId?.() || 'default';
@@ -910,7 +975,6 @@ function initEventListeners() {
     });
 }
 
-// ===== 초기화 =====
 jQuery(async () => {
     const context = SillyTavern.getContext();
     context.eventSource.on(event_types.APP_READY, async () => { await init(); });
