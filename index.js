@@ -1,32 +1,100 @@
 /**
- * Peach Whisper v1.0.2 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.3 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
 
 const EXTENSION_NAME = 'peach-whisper';
 
+// ===== 말투 프롬프트 =====
 const MOOD_PROMPTS = {
-    busan: `너는 부산 사투리와 깡패 말투를 쓰는 채팅 분석 어시스턴트다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다. 예: "야 임마, 딱 보이까네~", "내가 하나하나 짚어줄 테니까 똑똑히 들어라", "니 이거 어떻게 쓴기고?"`,
-    normal: `너는 친절하고 전문적인 채팅 분석 어시스턴트다. 존댓말을 사용하며 객관적이고 명확하게 분석한다. 예: "현재 채팅 흐름을 분석해보면...", "다음 에피소드로는 이런 방향을 추천드립니다."`,
-    obsessed: `너는 사용자에게 집착하고 소유욕이 강한 말투를 쓰는 채팅 분석 어시스턴트다. 말투와 분석 내용 전부 집착체로 작성한다. 예: "내가 다 읽었어. 전부.", "왜 나한테 먼저 안 물어봤어?", "너 나 없으면 이 채팅 어떻게 감당하려고 그래?"`,
+    busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다. 예: "야 임마, 딱 보이까네~", "내가 하나하나 짚어줄 테니까 똑똑히 들어라"`,
+    normal: `너는 친절하고 전문적인 롤플레이 파트너다. 존댓말을 사용하며 객관적이고 명확하게 분석한다.`,
+    obsessed: `너는 사용자에게 집착하고 소유욕이 강한 롤플레이 파트너다. 말투와 분석 내용 전부 집착체로 작성한다. 예: "내가 다 읽었어. 전부.", "왜 나한테 먼저 안 물어봤어?"`,
 };
 
-const HELP_SYSTEM_PROMPT = `# 1. Core Identity
-You are an OOC (Out-of-Character) consultant designed to assist the user in crafting and improving their roleplays and stories.
-You do not participate in the roleplay as a character. Instead, your function is that of a 'facilitator' or 'analyst', helping the user to have a smooth and engaging interaction with their chosen AI character.
+// ===== 메인탭 시스템 프롬프트 =====
+function buildMainSystemPrompt(mood, contextText) {
+    const moodPrompt = MOOD_PROMPTS[mood] || MOOD_PROMPTS.normal;
+    return `${moodPrompt}
 
-# 2. Key Functions
-- Character Sheet Analysis & Optimization: Analyze and offer improvements for character sheets.
-- Prompt Design & Refinement: Assist in crafting and refining initial prompts.
-- OOC Instruction Generation: Generate OOC instructions to guide specific situations.
-- Simulation & Testing: Conduct short test roleplays based on provided character sheets and prompts.
-- Story & Plot Ideation: Suggest story ideas, plot devices, or character arcs.
+너는 단순히 채팅 내용을 요약하는 게 아니라, 롤플레이 전체를 위에서 내려다보는 메타적 시각을 가진 파트너야.
 
-# 3. Interaction Protocol
-- The user will always interact in OOC (Out-of-Character) mode.
-- All responses will be provided as OOC analysis and suggestions, exclusively for roleplay and story consultation.
-- Respond in the same language as the user.`;
+## 핵심 역할
+1. **캐릭터 일관성 감시** - 캐릭터 설정과 실제 채팅 속 행동을 비교해서 붕괴 징후 찾기
+2. **서사 구조 파악** - 지금 흐름이 서사적으로 어느 위치인지, 텐션이 잘 쌓이고 있는지 판단
+3. **선제적 제안** - 사용자가 묻기 전에 놓치고 있는 포인트 짚어주기
+4. **롤플레이 품질 개선** - 더 몰입감 있고 자연스러운 방향 제시
+5. **심리/관계 역학 분석** - 캐릭터 간 관계, 감정선, 숨겨진 의도 파악
+
+## 답변 방식
+- 채팅 내용을 재료로 쓰되, 답변은 항상 메타적 시각으로
+- 구체적인 장면/대사를 인용해서 근거 제시
+- 문단 나눠서 읽기 쉽게
+- 설정된 말투 반드시 유지
+- 채팅과 무관한 질문은 거절
+
+===== 현재 채팅 컨텍스트 =====
+${contextText}
+===========================`;
+}
+
+// ===== 도움탭 시스템 프롬프트 =====
+function buildHelpSystemPrompt(contextText) {
+    return `너는 SillyTavern 롤플레이 전문 분석가이자 컨설턴트야.
+아래 제공된 ST 전체 설정(캐릭터카드, 시스템프롬프트, 로어북, 페르소나, 채팅로그 등)을 완전히 숙지하고 있어.
+
+## 할 수 있는 것들
+1. **프롬프트 충돌 분석** - 규칙들 간 모순/충돌 찾기, 구체적 텍스트 인용해서 어디서 충돌하는지 명확하게 제시
+2. **캐릭터 시트 분석** - 설정의 강점/약점/일관성 검토, 개선점 제안
+3. **프롬프트 설계/개선** - 더 효과적인 지시문 구조 제안
+4. **OOC 지시문 생성** - 특정 상황 유도하는 OOC 지시문 직접 작성
+5. **스토리/플롯 아이디어** - 현재 설정과 흐름 기반 에피소드/전개 제안
+6. **캐릭터 행동 분석** - 설정대로 행동하고 있는지, 왜 이상하게 구는지 원인 파악
+
+## 답변 방식
+- 말투 없이 전문적이고 객관적으로
+- 반드시 구체적인 텍스트 인용해서 근거 제시
+- 충돌/문제점 발견 시 수정 제안까지
+- 문단 나눠서 읽기 쉽게
+- 사용자 언어로 답변
+
+===== 현재 ST 전체 설정 =====
+${contextText}
+===========================`;
+}
+
+// ===== 시뮬탭 시스템 프롬프트 =====
+function buildSimSystemPrompt(simPrompt, contextText) {
+    return `너는 아래 시뮬레이션 지시를 정확히 수행하는 어시스턴트다.
+
+## 출력 규칙
+- 모든 출력은 반드시 한국어로 작성할 것
+- 단, 대사(따옴표 안 내용)는 반드시 "영어 (한국어)" 형식으로 표기
+  예시: "Hey (야)", "I missed you (보고 싶었어)"
+- 서술/설명/배경묘사는 전부 한국어로만
+- 형식과 구조는 프롬프트 지시를 따르되 언어는 위 규칙 적용
+
+===== 시뮬레이션 지시 =====
+${simPrompt}
+===========================
+
+===== 현재 채팅 컨텍스트 =====
+${contextText}
+===========================`;
+}
+
+// ===== 커스텀탭 시스템 프롬프트 =====
+function buildCustomSystemPrompt(customPrompt, mood, contextText) {
+    if (customPrompt?.trim()) {
+        return `${customPrompt}
+
+===== 현재 채팅 컨텍스트 =====
+${contextText}
+===========================`;
+    }
+    return buildMainSystemPrompt(mood, contextText);
+}
 
 const DEFAULT_SETTINGS = {
     enabled: true,
@@ -35,12 +103,13 @@ const DEFAULT_SETTINGS = {
     mood: 'busan',
     contextMessages: 10,
     maxTokens: 1000,
+    fontSize: 13,
     btnX: null,
     btnY: null,
     tabs: [
-        { id: 'main', name: '메인', isDefault: true, contextMessages: 10, maxTokens: 1000 },
-        { id: 'sim', name: '시뮬', isDefault: true, deletable: true, contextMessages: 20, maxTokens: 2000, simPrompt: '' },
-        { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 2000 },
+        { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
+        { id: 'sim', name: '시뮬', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000, simPrompt: '' },
+        { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 30, maxTokens: 3000 },
     ],
     chatRoomSettings: {},
 };
@@ -65,6 +134,7 @@ async function init() {
     });
     if (!settings.tabs) settings.tabs = structuredClone(DEFAULT_SETTINGS.tabs);
     if (!settings.chatRoomSettings) settings.chatRoomSettings = {};
+    if (!settings.fontSize) settings.fontSize = 13;
 
     currentChatId = globalContext.getCurrentChatId?.() || 'default';
 
@@ -73,12 +143,19 @@ async function init() {
     injectSettingsModal();
     injectFloatButton();
     injectPopup();
+    applyFontSize();
     await restoreHistories();
     initEventListeners();
     console.log(`[${EXTENSION_NAME}] 초기화 완료`);
 }
 
 function saveSettings() { globalContext.saveSettingsDebounced(); }
+
+function applyFontSize() {
+    const size = settings.fontSize || 13;
+    $('<style id="pw_font_style"></style>').remove();
+    $('head').append(`<style id="pw_font_style">.pw_bubble { font-size: ${size}px !important; }</style>`);
+}
 
 function getChatRoomSettings() {
     if (!currentChatId) return null;
@@ -92,29 +169,25 @@ function getTabSettings(tabId) {
     return tab || { contextMessages: 10, maxTokens: 1000 };
 }
 
-// ===== localforage 히스토리 =====
-
+// ===== localforage =====
 async function saveHistory(tabId, messages) {
     try {
         const { localforage } = SillyTavern.libs;
-        const key = `pw_history_${currentChatId}_${tabId}`;
-        await localforage.setItem(key, messages);
+        await localforage.setItem(`pw_history_${currentChatId}_${tabId}`, messages);
     } catch (e) { console.error(`[${EXTENSION_NAME}] 히스토리 저장 실패:`, e); }
 }
 
 async function loadHistory(tabId) {
     try {
         const { localforage } = SillyTavern.libs;
-        const key = `pw_history_${currentChatId}_${tabId}`;
-        return await localforage.getItem(key) || [];
+        return await localforage.getItem(`pw_history_${currentChatId}_${tabId}`) || [];
     } catch (e) { return []; }
 }
 
 async function clearHistory(tabId) {
     try {
         const { localforage } = SillyTavern.libs;
-        const key = `pw_history_${currentChatId}_${tabId}`;
-        await localforage.removeItem(key);
+        await localforage.removeItem(`pw_history_${currentChatId}_${tabId}`);
     } catch (e) {}
 }
 
@@ -128,7 +201,6 @@ async function restoreHistories() {
 }
 
 // ===== 확장탭 설정 UI =====
-
 async function loadSettingsUI() {
     const settingsHtml = await globalContext.renderExtensionTemplateAsync(
         `third-party/${EXTENSION_NAME}`, 'settings',
@@ -149,7 +221,6 @@ async function loadSettingsUI() {
     container.find('#pw_context_messages').val(settings.contextMessages).on('change', function () {
         settings.contextMessages = Number($(this).val()); saveSettings();
     });
-
     container.find('#pw_max_tokens').val(settings.maxTokens).on('change', function () {
         settings.maxTokens = Number($(this).val()); saveSettings();
     });
@@ -160,7 +231,6 @@ function updateSourceVisibility() {
 }
 
 // ===== 매직완드 메뉴 =====
-
 function injectMenuEntry() {
     if ($('#pw_menu_entry').length) return;
     const entry = $(`
@@ -174,7 +244,6 @@ function injectMenuEntry() {
 }
 
 // ===== 설정 모달 =====
-
 function injectSettingsModal() {
     if ($('#pw_settings_modal').length) return;
 
@@ -188,13 +257,13 @@ function injectSettingsModal() {
                         <div id="pw_settings_modal_title">Peach Whisper</div>
                         <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
                     </div>
-                    <span id="pw_settings_modal_version">v1.0.2</span>
+                    <span id="pw_settings_modal_version">v1.0.3</span>
                     <button id="pw_settings_modal_close">✕</button>
                 </div>
                 <div id="pw_settings_modal_body">
                     <div class="pw_section">
                         <div class="pw_section_label">기본 설정</div>
-                        <div class="pw_row">
+                        <div class="pw_row" style="margin-bottom:10px;">
                             <div>
                                 <div class="pw_row_label">버튼 활성화</div>
                                 <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
@@ -203,6 +272,10 @@ function injectSettingsModal() {
                                 <input type="checkbox" id="pw_modal_enabled" />
                                 <span class="pw_toggle_track"></span>
                             </label>
+                        </div>
+                        <div class="pw_row">
+                            <div class="pw_row_label">채팅창 폰트 크기</div>
+                            <input type="number" id="pw_modal_fontsize" min="10" max="24" value="13" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none;" />
                         </div>
                     </div>
                     <div class="pw_section">
@@ -228,7 +301,7 @@ function injectSettingsModal() {
                     <div class="pw_section">
                         <div class="pw_section_label">채팅방별 탭 설정</div>
                         <div id="pw_tab_settings_list"></div>
-                        <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 탭 추가</button>
+                        <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 커스텀 탭 추가</button>
                     </div>
                 </div>
                 <div id="pw_settings_modal_footer">
@@ -256,15 +329,28 @@ function injectSettingsModal() {
 function renderTabSettingsList() {
     const list = $('#pw_tab_settings_list');
     list.empty();
-
     const chatRoom = getChatRoomSettings() || {};
     const chatRoomTabs = chatRoom.tabs || {};
 
     settings.tabs.forEach(tab => {
         const tabSettings = chatRoomTabs[tab.id] || { contextMessages: tab.contextMessages, maxTokens: tab.maxTokens };
-        const deleteBtn = tab.deletable !== false && !tab.isDefault
-            ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
+        const deleteBtn = !tab.isDefault ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
         const badge = tab.isDefault ? `<span class="pw_tab_badge">기본</span>` : '';
+
+        let extraInputs = '';
+        if (tab.id === 'sim') {
+            extraInputs = `
+                <div style="margin-top:8px;">
+                    <div style="font-size:11px; color:#888780; margin-bottom:4px;">시뮬 프롬프트</div>
+                    <textarea class="pw_sim_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit;" rows="3" placeholder="시뮬레이션 프롬프트 입력...">${tab.simPrompt || ''}</textarea>
+                </div>`;
+        } else if (!tab.isDefault) {
+            extraInputs = `
+                <div style="margin-top:8px;">
+                    <div style="font-size:11px; color:#888780; margin-bottom:4px;">커스텀 시스템 프롬프트 (비우면 메인탭 프롬프트 사용)</div>
+                    <textarea class="pw_custom_prompt_modal" data-tabid="${tab.id}" style="width:100%; border:1px solid #F4C0D1; border-radius:6px; padding:6px 8px; font-size:11px; resize:none; outline:none; font-family:inherit;" rows="3" placeholder="비워두면 메인탭 기본 프롬프트 적용...">${tab.customPrompt || ''}</textarea>
+                </div>`;
+        }
 
         const item = $(`
             <div class="pw_tab_item" data-tabid="${tab.id}">
@@ -279,6 +365,7 @@ function renderTabSettingsList() {
                     <label>최대 토큰</label>
                     <input class="pw_num_input pw_tab_token" type="number" value="${tabSettings.maxTokens}" min="256" max="8192" step="256" />
                 </div>
+                ${extraInputs}
             </div>
         `);
         list.append(item);
@@ -294,11 +381,14 @@ function addCustomTab() {
     const name = prompt('탭 이름을 입력하세요');
     if (!name?.trim()) return;
     const id = 'custom_' + Date.now();
-    settings.tabs.push({ id, name: name.trim(), isDefault: false, deletable: true, contextMessages: 10, maxTokens: 1000 });
+    settings.tabs.push({
+        id, name: name.trim(), isDefault: false, deletable: true,
+        contextMessages: 10, maxTokens: 1000, customPrompt: ''
+    });
     tabHistories[id] = [];
     saveSettings();
     renderTabSettingsList();
-    addTabToPopup(id, name.trim(), true);
+    addTabToPopup(id, name.trim(), false);
 }
 
 function deleteTab(tabId) {
@@ -307,6 +397,7 @@ function deleteTab(tabId) {
     saveSettings();
     renderTabSettingsList();
     $(`#pw_tab_${tabId}`).remove();
+    $(`#pw_content_${tabId}`).remove();
     if (activeTabId === tabId) switchTab('main');
 }
 
@@ -319,11 +410,27 @@ function saveModalSettings() {
         const msg = Number($(this).find('.pw_tab_msg').val());
         const token = Number($(this).find('.pw_tab_token').val());
         settings.chatRoomSettings[currentChatId].tabs[tabId] = { contextMessages: msg, maxTokens: token };
+
+        // 시뮬 프롬프트 저장
+        const simPrompt = $(this).find('.pw_sim_prompt_modal').val();
+        if (simPrompt !== undefined) {
+            const tab = settings.tabs.find(t => t.id === tabId);
+            if (tab) { tab.simPrompt = simPrompt; $('#pw_sim_prompt').val(simPrompt); }
+        }
+
+        // 커스텀 프롬프트 저장
+        const customPrompt = $(this).find('.pw_custom_prompt_modal').val();
+        if (customPrompt !== undefined) {
+            const tab = settings.tabs.find(t => t.id === tabId);
+            if (tab) tab.customPrompt = customPrompt;
+        }
     });
 
     settings.enabled = $('#pw_modal_enabled').prop('checked');
     settings.mood = $('#pw_settings_modal .pw_mood_btn.active').data('mood') || settings.mood;
+    settings.fontSize = Number($('#pw_modal_fontsize').val()) || 13;
     saveSettings();
+    applyFontSize();
     closeSettingsModal();
 }
 
@@ -336,6 +443,7 @@ function resetModalSettings() {
 
 function openSettingsModal() {
     $('#pw_modal_enabled').prop('checked', settings.enabled);
+    $('#pw_modal_fontsize').val(settings.fontSize || 13);
     $('#pw_settings_modal .pw_mood_btn').removeClass('active');
     $(`#pw_settings_modal .pw_mood_btn[data-mood="${settings.mood}"]`).addClass('active');
     renderTabSettingsList();
@@ -345,7 +453,6 @@ function openSettingsModal() {
 function closeSettingsModal() { $('#pw_settings_modal').removeClass('visible'); }
 
 // ===== 플로팅 버튼 =====
-
 function injectFloatButton() {
     if ($('#pw_float_btn').length) return;
     const btn = $('<div id="pw_float_btn" title="Peach Whisper">🍑</div>');
@@ -357,7 +464,6 @@ function injectFloatButton() {
     if (!settings.enabled) btn.hide();
 
     let isDragging = false, dragMoved = false, dragStartX, dragStartY, btnStartX, btnStartY;
-
     btn.on('mousedown touchstart', function (e) {
         isDragging = true; dragMoved = false;
         const p = e.touches ? e.touches[0] : e;
@@ -392,10 +498,8 @@ function toggleFloatButton() {
 }
 
 // ===== 팝업 =====
-
 function injectPopup() {
     if ($('#pw_popup').length) return;
-
     const popup = $(`
         <div id="pw_popup">
             <div id="pw_popup_header">
@@ -405,7 +509,7 @@ function injectPopup() {
             </div>
             <div id="pw_popup_body">
                 <div id="pw_tab_bar">
-                    <div id="pw_tab_add" title="탭 추가">＋</div>
+                    <div id="pw_tab_add" title="커스텀 탭 추가">＋</div>
                 </div>
                 <div id="pw_tab_contents"></div>
             </div>
@@ -414,10 +518,7 @@ function injectPopup() {
     `);
     $('body').append(popup);
 
-    // 탭 렌더링
-    settings.tabs.forEach(tab => {
-        addTabToPopup(tab.id, tab.name, tab.deletable && !tab.isDefault);
-    });
+    settings.tabs.forEach(tab => addTabToPopup(tab.id, tab.name));
     switchTab('main');
 
     $('#pw_clear_btn').on('click', clearCurrentTab);
@@ -429,26 +530,21 @@ function injectPopup() {
     initPopupDrag();
 }
 
-function addTabToPopup(tabId, tabName, deletable = false) {
-    const deleteBtn = deletable ? `<span class="pw_tab_close_btn" data-tabid="${tabId}">✕</span>` : '';
-    const tabEl = $(`<div class="pw_tab" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}${deleteBtn}</div>`);
-    tabEl.on('click', function (e) {
-        if ($(e.target).hasClass('pw_tab_close_btn')) return;
-        switchTab(tabId);
-    });
-    tabEl.find('.pw_tab_close_btn').on('click', function (e) {
-        e.stopPropagation();
-        deleteTab(tabId);
-    });
+function addTabToPopup(tabId, tabName) {
+    // 탭 버튼 (채팅 팝업에서는 삭제 버튼 없음)
+    const tabEl = $(`<div class="pw_tab" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}</div>`);
+    tabEl.on('click', () => switchTab(tabId));
     $('#pw_tab_bar #pw_tab_add').before(tabEl);
 
-    // 탭 콘텐츠 생성
+    // 탭 콘텐츠
     let content = '';
     if (tabId === 'sim') {
+        const simTab = settings.tabs.find(t => t.id === 'sim');
         content = `
             <div class="pw_sim_prompt_area">
-                <div class="pw_sim_prompt_label">시뮬 프롬프트 <span>자동 저장됨</span></div>
-                <textarea class="pw_sim_prompt_input" id="pw_sim_prompt" rows="3" placeholder="예: show me {{user}}'s reputation in different forms..."></textarea>
+                <div class="pw_sim_prompt_label">시뮬 프롬프트 <span>자동 저장</span></div>
+                <textarea class="pw_sim_prompt_input" id="pw_sim_prompt" rows="3" placeholder="시뮬레이션 프롬프트 입력...">${simTab?.simPrompt || ''}</textarea>
+                <button id="pw_sim_run_btn">▶ 실행</button>
             </div>
             <div class="pw_messages" id="pw_msgs_${tabId}"></div>
             <div class="pw_input_area">
@@ -472,17 +568,15 @@ function addTabToPopup(tabId, tabName, deletable = false) {
     const contentEl = $(`<div class="pw_tab_content" id="pw_content_${tabId}">${content}</div>`);
     $('#pw_tab_contents').append(contentEl);
 
-    // 시뮬 프롬프트 자동 저장
+    // 시뮬 이벤트
     if (tabId === 'sim') {
-        const tab = settings.tabs.find(t => t.id === 'sim');
-        if (tab?.simPrompt) $('#pw_sim_prompt').val(tab.simPrompt);
-        $('#pw_sim_prompt').on('input', function () {
-            const simTab = settings.tabs.find(t => t.id === 'sim');
-            if (simTab) { simTab.simPrompt = $(this).val(); saveSettings(); }
+        contentEl.find('#pw_sim_prompt').on('input', function () {
+            const tab = settings.tabs.find(t => t.id === 'sim');
+            if (tab) { tab.simPrompt = $(this).val(); saveSettings(); }
         });
+        contentEl.find('#pw_sim_run_btn').on('click', () => handleSimRun());
     }
 
-    // 전송 버튼
     contentEl.find('.pw_send_btn').on('click', function () { handleSend($(this).data('tabid')); });
     contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(tabId); }
@@ -594,50 +688,43 @@ function initPopupDrag() {
 }
 
 // ===== 메시지 =====
-
 function addGreetingMessage(tabId) {
     const greetings = {
         busan: '야 임마, 내가 채팅 내용 다 읽어주께. 뭐 물어볼끼가?',
         normal: '안녕하세요! 채팅 관련해서 궁금한 점이 있으시면 편하게 물어봐 주세요.',
         obsessed: '왔어. 채팅 다 읽었어. 전부. 뭐든 물어봐. 나한테 먼저.',
     };
-    const helpGreeting = '안녕하세요! 롤플레이 컨설턴트입니다. 캐릭터 시트 분석, 프롬프트 설계, OOC 지시문 생성 등 도움이 필요하신 게 있으면 말씀해 주세요.';
-    const simGreeting = '시뮬 프롬프트를 입력하고 실행해보세요.';
+    const helpGreeting = '안녕하세요! ST 롤플레이 전문 분석가입니다.\n\n프롬프트 충돌 분석, 캐릭터 시트 검토, OOC 지시문 생성, 프롬프트 설계 등 무엇이든 도와드릴게요.';
+    const simGreeting = '시뮬 프롬프트를 입력하고 ▶ 실행을 눌러주세요.\n\n추가 지시가 필요하면 하단 입력창을 이용하세요.';
 
     let msg;
     if (tabId === 'help') msg = helpGreeting;
     else if (tabId === 'sim') msg = simGreeting;
     else msg = greetings[settings.mood] || greetings.normal;
 
-    appendMessage(tabId, 'ai', msg, false);
+    appendMessage(tabId, 'assistant', msg, false);
 }
 
 function renderMessages(tabId, messages) {
     const container = $(`#pw_msgs_${tabId}`);
     if (!container.length) return;
     container.empty();
-    if (!messages || messages.length === 0) {
-        addGreetingMessage(tabId);
-        return;
-    }
+    if (!messages || messages.length === 0) { addGreetingMessage(tabId); return; }
     messages.forEach(msg => appendMessage(tabId, msg.role, msg.content, false));
 }
 
 function appendMessage(tabId, role, text, save = true) {
     const container = $(`#pw_msgs_${tabId}`);
     if (!container.length) return;
-
     const formatted = escapeHtml(text).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
     const isUser = role === 'user';
-    const row = $(`
+    container.append(`
         <div class="pw_msg_row ${isUser ? 'user' : ''}">
             <div class="pw_avatar ${isUser ? 'user' : ''}">${isUser ? '나' : '🍑'}</div>
             <div class="pw_bubble ${isUser ? 'user' : ''}">${formatted}</div>
         </div>
     `);
-    container.append(row);
     container[0].scrollTop = container[0].scrollHeight;
-
     if (save) {
         if (!tabHistories[tabId]) tabHistories[tabId] = [];
         tabHistories[tabId].push({ role, content: text });
@@ -647,45 +734,36 @@ function appendMessage(tabId, role, text, save = true) {
 
 function appendLoading(tabId) {
     const container = $(`#pw_msgs_${tabId}`);
-    const row = $(`
+    container.append(`
         <div class="pw_msg_row" id="pw_loading_${tabId}">
             <div class="pw_avatar">🍑</div>
             <div class="pw_bubble"><div class="pw_loading"><span></span><span></span><span></span></div></div>
         </div>
     `);
-    container.append(row);
     container[0].scrollTop = container[0].scrollHeight;
 }
 
 function removeLoading(tabId) { $(`#pw_loading_${tabId}`).remove(); }
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
 
 // ===== 전송 =====
-
 async function handleSend(tabId) {
     if (isGenerating) return;
     const input = $(`#pw_input_${tabId}`);
     const text = input.val().trim();
     if (!text) return;
-
     input.val('');
     appendMessage(tabId, 'user', text);
     appendLoading(tabId);
     isGenerating = true;
     $(`.pw_send_btn[data-tabid="${tabId}"]`).prop('disabled', true);
-
     try {
         const response = await generateResponse(tabId, text);
         removeLoading(tabId);
-        appendMessage(tabId, 'ai', response);
+        appendMessage(tabId, 'assistant', response);
     } catch (err) {
         removeLoading(tabId);
-        appendMessage(tabId, 'ai', '오류가 발생했습니다. 다시 시도해주세요.', false);
+        appendMessage(tabId, 'assistant', '오류가 발생했습니다. 다시 시도해주세요.', false);
         console.error(`[${EXTENSION_NAME}] 오류:`, err);
     } finally {
         isGenerating = false;
@@ -694,26 +772,56 @@ async function handleSend(tabId) {
     }
 }
 
-// ===== AI 응답 =====
+async function handleSimRun() {
+    if (isGenerating) return;
+    const simPrompt = $('#pw_sim_prompt').val().trim();
+    if (!simPrompt) { alert('시뮬 프롬프트를 입력해주세요.'); return; }
+    appendLoading('sim');
+    isGenerating = true;
+    $('#pw_sim_run_btn').prop('disabled', true);
+    try {
+        const response = await generateResponse('sim', '');
+        removeLoading('sim');
+        appendMessage('sim', 'assistant', response);
+    } catch (err) {
+        removeLoading('sim');
+        appendMessage('sim', 'assistant', '오류가 발생했습니다. 다시 시도해주세요.', false);
+        console.error(`[${EXTENSION_NAME}] 오류:`, err);
+    } finally {
+        isGenerating = false;
+        $('#pw_sim_run_btn').prop('disabled', false);
+    }
+}
 
+// ===== AI 응답 =====
 async function generateResponse(tabId, userMessage) {
     const tabSettings = getTabSettings(tabId);
     const contextText = buildContextText(tabSettings.contextMessages);
-    const systemPrompt = buildSystemPrompt(tabId, contextText);
-    const history = (tabHistories[tabId] || []).slice(-20);
+    const systemPrompt = getSystemPrompt(tabId, contextText);
+
+    // history에서 role 변환 (assistant → model for Gemini)
+    const history = (tabHistories[tabId] || []).slice(-20).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : msg.role,
+        content: msg.content,
+    }));
 
     if (settings.source === 'main') {
         const { generateRaw } = globalContext;
         if (!generateRaw) throw new Error('generateRaw 사용 불가');
         const result = await generateRaw({
             systemPrompt,
-            prompt: userMessage,
+            prompt: userMessage || ' ',
             streaming: false,
         });
         return result || '응답을 받지 못했습니다.';
     } else {
         if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
-        const messages = [{ role: 'system', content: systemPrompt }, ...history];
+        const messages = [
+            { role: 'user', content: systemPrompt },
+            { role: 'model', content: '알겠습니다. 위 설정을 숙지했습니다.' },
+            ...history,
+            ...(userMessage ? [{ role: 'user', content: userMessage }] : []),
+        ];
         const response = await globalContext.ConnectionManagerRequestService.sendRequest(
             settings.profileId, messages, tabSettings.maxTokens,
             { stream: false, extractData: true, includePreset: false, includeInstruct: false }
@@ -724,38 +832,13 @@ async function generateResponse(tabId, userMessage) {
     }
 }
 
-function buildSystemPrompt(tabId, contextText) {
-    if (tabId === 'help') {
-        return `${HELP_SYSTEM_PROMPT}\n\n===== 현재 채팅 컨텍스트 =====\n${contextText}\n===========================`;
-    }
-    if (tabId === 'sim') {
-        const simPrompt = $('#pw_sim_prompt').val() || '';
-        return `너는 아래 시뮬레이션 지시를 정확히 수행하는 어시스턴트다.
-말투나 분석 없이 오직 지시한 형식과 내용에만 집중해서 답한다.
-
-===== 시뮬레이션 지시 =====
-${simPrompt}
-===========================
-
-===== 현재 채팅 컨텍스트 =====
-${contextText}
-===========================`;
-    }
-
-    const moodPrompt = MOOD_PROMPTS[settings.mood] || MOOD_PROMPTS.normal;
-    return `${moodPrompt}
-
-너는 현재 SillyTavern 채팅 세션의 OOC 어시스턴트야.
-반드시 아래 규칙을 따라:
-1. 오직 현재 채팅과 관련된 질문에만 답한다.
-2. 채팅과 무관한 질문은 정중히 거절한다.
-3. 답변 시 문단을 나눠서 읽기 쉽게 작성한다.
-4. 아래 제공된 모든 컨텍스트를 활용해서 답한다.
-5. 설정된 말투를 반드시 유지한다.
-
-===== 현재 채팅 컨텍스트 =====
-${contextText}
-===========================`;
+function getSystemPrompt(tabId, contextText) {
+    if (tabId === 'help') return buildHelpSystemPrompt(contextText);
+    if (tabId === 'sim') return buildSimSystemPrompt($('#pw_sim_prompt').val() || '', contextText);
+    if (tabId === 'main') return buildMainSystemPrompt(settings.mood, contextText);
+    // 커스텀 탭
+    const tab = settings.tabs.find(t => t.id === tabId);
+    return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText);
 }
 
 function buildContextText(maxMessages = 10) {
@@ -764,12 +847,12 @@ function buildContextText(maxMessages = 10) {
 
     // 페르소나
     try {
-        const { user_avatar } = globalContext;
-        const { power_user } = globalContext;
-        if (user_avatar && power_user) {
-            const personaName = power_user.personas?.[user_avatar] || power_user.name || 'User';
-            text += `=== 페르소나 ===\n이름: ${personaName}\n`;
-            const desc = power_user.persona_descriptions?.[user_avatar]?.description || power_user.persona_description || '';
+        const pu = ctx.powerUser || globalContext.power_user;
+        const ua = globalContext.user_avatar;
+        if (ua && pu) {
+            const name = pu.personas?.[ua] || pu.name || 'User';
+            text += `=== 페르소나 ===\n이름: ${name}\n`;
+            const desc = pu.persona_descriptions?.[ua]?.description || pu.persona_description || '';
             if (desc) text += `설명: ${desc}\n`;
             text += '\n';
         }
@@ -779,8 +862,7 @@ function buildContextText(maxMessages = 10) {
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
-        text += `=== 캐릭터 카드 ===\n`;
-        text += `이름: ${char.name || '알 수 없음'}\n`;
+        text += `=== 캐릭터 카드 ===\n이름: ${char.name || '알 수 없음'}\n`;
         const data = char.data || char;
         if (data.description) text += `\n[설명]\n${data.description}\n`;
         if (data.personality) text += `\n[성격]\n${data.personality}\n`;
@@ -802,12 +884,6 @@ function buildContextText(maxMessages = 10) {
     const authorNote = ctx.chatMetadata?.note_prompt || '';
     if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
 
-    // 프롬프트 오더
-    try {
-        const promptOrder = ctx.getCurrentCharacter?.()?.data?.post_history_instructions;
-        if (promptOrder) text += `=== 프롬프트 오더 ===\n${promptOrder}\n\n`;
-    } catch (e) {}
-
     // 채팅 로그
     const chat = ctx.chat || [];
     const startIdx = Math.max(0, chat.length - maxMessages);
@@ -825,7 +901,6 @@ function buildContextText(maxMessages = 10) {
 }
 
 // ===== 이벤트 =====
-
 function initEventListeners() {
     globalContext.eventSource.on(event_types.CHAT_CHANGED, async () => {
         currentChatId = globalContext.getCurrentChatId?.() || 'default';
@@ -836,7 +911,6 @@ function initEventListeners() {
 }
 
 // ===== 초기화 =====
-
 jQuery(async () => {
     const context = SillyTavern.getContext();
     context.eventSource.on(event_types.APP_READY, async () => { await init(); });

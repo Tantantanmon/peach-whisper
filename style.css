@@ -300,3 +300,13 @@
     .pw_messages { max-height: 160px; }
     .pw_bubble { font-size: 12px; }
 }
+
+/* 시뮬 실행 버튼 */
+#pw_sim_run_btn {
+    width: 100%; margin-top: 6px;
+    padding: 7px; background: #1a1a1a; color: white;
+    border: none; border-radius: 8px; font-size: 12px;
+    cursor: pointer; transition: background 0.15s;
+}
+#pw_sim_run_btn:hover { background: #333; }
+#pw_sim_run_btn:disabled { background: #aaa; cursor: not-allowed; }
