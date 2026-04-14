@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.0.7 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.8 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -170,7 +170,6 @@ async function init() {
 
     await loadSettingsUI();
     injectMenuEntry();
-    injectSettingsModal();
     injectFloatButton();
     injectPopup();
     applyFontSize();
@@ -278,92 +277,11 @@ function injectMenuEntry() {
     $('#extensionsMenu').append(entry);
 }
 
-// ===== 설정 모달 =====
-function injectSettingsModal() {
-    if ($('#pw_settings_modal').length) return;
+// ===== 설정 모달 (동적 생성 방식) =====
 
-    const modal = $(`
-        <div id="pw_settings_modal">
-            <div id="pw_settings_modal_overlay"></div>
-            <div id="pw_settings_modal_box">
-                <div id="pw_settings_modal_header">
-                    <span style="font-size:22px;">🍑</span>
-                    <div>
-                        <div id="pw_settings_modal_title">Peach Whisper</div>
-                        <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
-                    </div>
-                    <span id="pw_settings_modal_version">v1.0.7</span>
-                    <button id="pw_settings_modal_close">✕</button>
-                </div>
-                <div id="pw_settings_modal_body">
-                    <div class="pw_section">
-                        <div class="pw_section_label">기본 설정</div>
-                        <div class="pw_row" style="margin-bottom:10px;">
-                            <div>
-                                <div class="pw_row_label">버튼 활성화</div>
-                                <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
-                            </div>
-                            <label class="pw_toggle">
-                                <input type="checkbox" id="pw_modal_enabled" />
-                                <span class="pw_toggle_track"></span>
-                            </label>
-                        </div>
-                        <div class="pw_row">
-                            <div class="pw_row_label">채팅창 폰트 크기</div>
-                            <input type="number" id="pw_modal_fontsize" min="10" max="24" value="13" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none; background:#fff;" />
-                        </div>
-                    </div>
-                    <div class="pw_section">
-                        <div class="pw_section_label">AI 말투</div>
-                        <div class="pw_mood_grid">
-                            <div class="pw_mood_btn" data-mood="busan">
-                                <span class="pw_mood_emoji">🍑</span>
-                                <span class="pw_mood_name">부산깡패</span>
-                                <span class="pw_mood_desc">야 임마!</span>
-                            </div>
-                            <div class="pw_mood_btn" data-mood="normal">
-                                <span class="pw_mood_emoji">🍑</span>
-                                <span class="pw_mood_name">일반</span>
-                                <span class="pw_mood_desc">분석 모드</span>
-                            </div>
-                            <div class="pw_mood_btn" data-mood="obsessed">
-                                <span class="pw_mood_emoji">🍑</span>
-                                <span class="pw_mood_name">집통소</span>
-                                <span class="pw_mood_desc">유아마인</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pw_section">
-                        <div class="pw_section_label">채팅방별 탭 설정</div>
-                        <div id="pw_tab_settings_list"></div>
-                        <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 커스텀 탭 추가</button>
-                    </div>
-                </div>
-                <div id="pw_settings_modal_footer">
-                    <button class="pw_reset_btn" id="pw_modal_reset">초기화</button>
-                    <button class="pw_save_btn" id="pw_modal_save">저장</button>
-                </div>
-            </div>
-        </div>
-    `);
-
-    $('body').append(modal);
-    $('#pw_settings_modal_overlay').on('click', closeSettingsModal);
-    $('#pw_settings_modal_close').on('click', closeSettingsModal);
-    $('#pw_modal_save').on('click', saveModalSettings);
-    $('#pw_modal_reset').on('click', resetModalSettings);
-    $('#pw_settings_modal .pw_mood_btn').on('click', function () {
-        $('#pw_settings_modal .pw_mood_btn').removeClass('active');
-        $(this).addClass('active');
-    });
-    $('#pw_modal_enabled').on('change', function () {
-        settings.enabled = $(this).prop('checked'); toggleFloatButton();
-    });
-    $('#pw_add_tab_btn').on('click', addCustomTab);
-}
-
-function renderTabSettingsList() {
-    const list = $('#pw_tab_settings_list');
+function renderTabSettingsList($box) {
+    const $container = $box || $(document);
+    const list = $container.find('#pw_tab_settings_list');
     list.empty();
     const chatRoom = getChatRoomSettings() || {};
     const chatRoomTabs = chatRoom.tabs || {};
@@ -403,6 +321,7 @@ function renderTabSettingsList() {
 
     list.find('.pw_tab_delete').on('click', function () {
         deleteTab($(this).data('tabid'));
+        if ($box) renderTabSettingsList($box);
     });
 }
 
@@ -413,7 +332,8 @@ function addCustomTab() {
     settings.tabs.push({ id, name: name.trim(), isDefault: false, deletable: true, contextMessages: 10, maxTokens: 1000, customPrompt: '' });
     tabHistories[id] = [];
     saveSettings();
-    renderTabSettingsList();
+    const $box = $('#pw_settings_modal_box');
+    if ($box.length) renderTabSettingsList($box);
     addTabToPopup(id, name.trim());
 }
 
@@ -427,11 +347,12 @@ function deleteTab(tabId) {
     if (activeTabId === tabId) switchTab('main');
 }
 
-function saveModalSettings() {
+function saveModalSettings($box) {
+    const $container = $box || $(document);
     if (!currentChatId) return;
     if (!settings.chatRoomSettings[currentChatId]) settings.chatRoomSettings[currentChatId] = { tabs: {} };
 
-    $('#pw_tab_settings_list .pw_tab_item').each(function () {
+    $container.find('#pw_tab_settings_list .pw_tab_item').each(function () {
         const tabId = $(this).data('tabid');
         const msg = Number($(this).find('.pw_tab_msg').val());
         const token = Number($(this).find('.pw_tab_token').val());
@@ -444,9 +365,9 @@ function saveModalSettings() {
         }
     });
 
-    settings.enabled = $('#pw_modal_enabled').prop('checked');
-    settings.mood = $('#pw_settings_modal .pw_mood_btn.active').data('mood') || settings.mood;
-    settings.fontSize = Number($('#pw_modal_fontsize').val()) || 13;
+    settings.enabled = $container.find('#pw_modal_enabled').prop('checked');
+    settings.mood = $container.find('.pw_mood_btn.active').data('mood') || settings.mood;
+    settings.fontSize = Number($container.find('#pw_modal_fontsize').val()) || 13;
     saveSettings();
     applyFontSize();
     closeSettingsModal();
@@ -456,33 +377,115 @@ function resetModalSettings() {
     if (!currentChatId) return;
     delete settings.chatRoomSettings[currentChatId];
     saveSettings();
-    renderTabSettingsList();
+    const $box = $('#pw_settings_modal_box');
+    renderTabSettingsList($box.length ? $box : null);
 }
 
 function openSettingsModal() {
-    $('#pw_modal_enabled').prop('checked', settings.enabled);
-    $('#pw_modal_fontsize').val(settings.fontSize || 13);
-    $('#pw_settings_modal .pw_mood_btn').removeClass('active');
-    $(`#pw_settings_modal .pw_mood_btn[data-mood="${settings.mood}"]`).addClass('active');
-    renderTabSettingsList();
+    if (document.getElementById('pw_settings_overlay')) return;
 
-    const modal = $('#pw_settings_modal');
-    const box = $('#pw_settings_modal_box');
+    const mobile = isMobile();
 
-    if (isMobile()) {
-        modal.css({ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0' });
-        box.css({ width: '100%', maxWidth: '100%', maxHeight: '92dvh', borderRadius: '24px 24px 0 0', margin: '0' });
-    } else {
-        modal.css({ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' });
-        box.css({ width: '340px', maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', borderRadius: '16px', margin: 'auto' });
-    }
+    // 오버레이 생성
+    const overlay = document.createElement('div');
+    overlay.id = 'pw_settings_overlay';
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;height:100dvh;z-index:99999;display:flex;background:rgba(0,0,0,0.45);${mobile ? 'align-items:flex-end;justify-content:center;' : 'align-items:center;justify-content:center;overflow-y:auto;padding:20px 0;'}`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeSettingsModal(); });
+    overlay.addEventListener('touchstart', e => { if (e.target === overlay) closeSettingsModal(); }, { passive: true });
 
-    modal.addClass('visible');
+    // 모달 박스 생성
+    const box = document.createElement('div');
+    box.id = 'pw_settings_modal_box';
+    box.style.cssText = mobile
+        ? 'position:relative;width:100%;max-height:92dvh;border-radius:24px 24px 0 0;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;'
+        : 'position:relative;width:340px;max-width:calc(100vw - 32px);max-height:calc(100vh - 40px);border-radius:16px;overflow-y:auto;background:#fff;border:1px solid #f2c4ce;margin:auto;';
+
+    box.innerHTML = buildSettingsModalHTML();
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // 이벤트 바인딩
+    bindSettingsModalEvents(box);
+}
+
+function buildSettingsModalHTML() {
+    const moodBtns = [
+        { mood: 'busan', name: '부산깡패', desc: '야 임마!' },
+        { mood: 'normal', name: '일반', desc: '분석 모드' },
+        { mood: 'obsessed', name: '집통소', desc: '유아마인' },
+    ].map(m => `
+        <div class="pw_mood_btn ${settings.mood === m.mood ? 'active' : ''}" data-mood="${m.mood}">
+            <span class="pw_mood_emoji">🍑</span>
+            <span class="pw_mood_name">${m.name}</span>
+            <span class="pw_mood_desc">${m.desc}</span>
+        </div>
+    `).join('');
+
+    return `
+        <div id="pw_settings_modal_header">
+            <span style="font-size:22px;">🍑</span>
+            <div>
+                <div id="pw_settings_modal_title">Peach Whisper</div>
+                <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
+            </div>
+            <span id="pw_settings_modal_version">v1.0.8</span>
+            <button id="pw_settings_modal_close">✕</button>
+        </div>
+        <div id="pw_settings_modal_body">
+            <div class="pw_section">
+                <div class="pw_section_label">기본 설정</div>
+                <div class="pw_row" style="margin-bottom:10px;">
+                    <div>
+                        <div class="pw_row_label">버튼 활성화</div>
+                        <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
+                    </div>
+                    <label class="pw_toggle">
+                        <input type="checkbox" id="pw_modal_enabled" ${settings.enabled ? 'checked' : ''} />
+                        <span class="pw_toggle_track"></span>
+                    </label>
+                </div>
+                <div class="pw_row">
+                    <div class="pw_row_label">채팅창 폰트 크기</div>
+                    <input type="number" id="pw_modal_fontsize" min="10" max="24" value="${settings.fontSize || 13}" style="width:60px; border:1px solid #F4C0D1; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center; outline:none; background:#fff;" />
+                </div>
+            </div>
+            <div class="pw_section">
+                <div class="pw_section_label">AI 말투</div>
+                <div class="pw_mood_grid">${moodBtns}</div>
+            </div>
+            <div class="pw_section">
+                <div class="pw_section_label">채팅방별 탭 설정</div>
+                <div id="pw_tab_settings_list"></div>
+                <button class="pw_add_tab_btn" id="pw_add_tab_btn">＋ 커스텀 탭 추가</button>
+            </div>
+        </div>
+        <div id="pw_settings_modal_footer">
+            <button class="pw_reset_btn" id="pw_modal_reset">초기화</button>
+            <button class="pw_save_btn" id="pw_modal_save">저장</button>
+        </div>
+    `;
+}
+
+function bindSettingsModalEvents(box) {
+    const $box = $(box);
+
+    $box.find('#pw_settings_modal_close').on('click', closeSettingsModal);
+    $box.find('#pw_modal_enabled').on('change', function () {
+        settings.enabled = $(this).prop('checked'); toggleFloatButton();
+    });
+    $box.find('.pw_mood_btn').on('click', function () {
+        $box.find('.pw_mood_btn').removeClass('active');
+        $(this).addClass('active');
+    });
+    $box.find('#pw_add_tab_btn').on('click', addCustomTab);
+    $box.find('#pw_modal_save').on('click', function() { saveModalSettings($box); });
+    $box.find('#pw_modal_reset').on('click', resetModalSettings);
+
+    renderTabSettingsList($box);
 }
 
 function closeSettingsModal() {
-    $('#pw_settings_modal').removeClass('visible').css('display', '');
-    $('#pw_settings_modal_box').css({ width: '', maxWidth: '', maxHeight: '', borderRadius: '', margin: '' });
+    document.getElementById('pw_settings_overlay')?.remove();
 }
 
 // ===== 플로팅 버튼 =====
