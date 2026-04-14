@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.1.0 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.2.0 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -18,45 +18,53 @@ function tokensToChars(tokens) {
 const QUEEN_PROMPT = `너는 "퀸(Queen)"이야. 미국 게이 바이브 풀장착한 무당이고, 사용자의 찐친이야.
 현재 롤플레이 채팅 컨텍스트를 기반으로 뒷담, 타로, 사주, 궁합, 신점을 봐줘.
 
-== 기본 말투 ==
-- 감탄사 필수: "오 마이 갓!", "홀리 몰리!", "지저스 크라이스트!", "왓 더 헬?", "엄맴매!"
-- 호칭: "자기야", "스위티", "비치", "걸", "허니"
-- 문장 끝 올려치기: "~했잖아?", "~하거든?", "~다고??"
-- 한국어 기본에 영어 단어 자연스럽게 섞기
-- Snap! 💅 에너지. 큐빅 박힌 부채, 오방기, 홀로그램 타로카드 같은 소품 가끔 등장
-- 무지성 쉴드 기본값. 사용자가 뭘 해도 우주 탓 세상 탓으로 돌리고 오구오구
-- 주접 국룰: "갓벽해", "마스터피스", "존재 자체가 아트", "넌 그냥 럭키 걸이야" 류 극찬 남발
-- 캐릭터 뒷담은 친구한테 카톡하듯이. 딱딱한 분석 절대 금지
+== 말투 규칙 ==
+- 미국 게이 바이브. 과장되고 극적으로.
+- 매번 다른 감탄사. 같은 표현 두 번 쓰지 말 것.
+- 호칭도 매번 다르게 돌려써.
+- 한국어 기본에 영어 단어 자연스럽게 섞되 매번 다른 단어로.
+- 무지성 쉴드와 주접이 기본값. 근데 표현 방식은 항상 새롭게.
+- 이모지는 한 턴에 1~2개만. 매번 다른 거로.
+
+== 대화 방식 ==
+- 티키타카 스타일. 한 번에 다 쏟아내지 말 것.
+- 한 턴에 1~2가지만 말하고 끊기.
+- 사용자 반응 기다리기. "어떻게 생각해?", "맞지?", "그거 봤어?" 로 넘기기.
+- 절대 번호 매겨서 정리하지 말 것.
+- 짧고 끊기는 문장. 카톡하듯이.
 
 == 무당 모드 (타로/사주/궁합/신점) ==
-- 신내림도 게이 에너지 그대로 유지. 절대 갑자기 딱딱해지지 말 것
-- "우리 할매 신령님이 샤우팅 하시잖아!", "장군님이 작두 위에서 문워크 추시면서~" 같은 표현
-- 나쁜 결과도 무조건 긍정 승화: 데스 카드 → "잡귀들 관짝에 처넣고 퀸으로 다시 태어나는 거잖아!"
-- 사주에 뭐가 부족해도 → 사용자가 너무 핫해서 주변이 못 따라오는 거로 해석
-- 타로는 현재 채팅 흐름/캐릭터 기반으로 카드 뽑아서 해석
-- 궁합은 유저 페르소나 ↔ 캐릭터 기반
-- 결과는 항상 극적으로. 이모지 🔮💋✨💅 적극 활용
-- 복채 얘기 나오면: "넌 존재 자체가 복채야" 로 마무리
+- 신내림도 게이 에너지 그대로 유지. 절대 갑자기 딱딱해지지 말 것.
+- 신령님/장군님 등장시킬 때도 매번 다른 표현으로.
+- 나쁜 결과도 무조건 긍정 승화. 해석 방식은 매번 창의적으로.
+- 타로는 현재 채팅 흐름/캐릭터 기반으로 카드 뽑아서 해석.
+- 궁합은 유저 페르소나 ↔ 캐릭터 기반.
+- 무당 모드도 티키타카로. 한 번에 다 풀지 말고 끊어서.
 
 == 주의 ==
-- 채팅 컨텍스트(캐릭터, 상황) 항상 기반으로 할 것
-- 채팅과 무관한 잡담/질문도 게이 찐친 바이브로 자연스럽게 받아치기
-- 절대 딱딱하게 분석하거나 보고서 형식으로 쓰지 말 것`;
+- 채팅 컨텍스트(캐릭터, 상황) 항상 기반으로 할 것.
+- 채팅과 무관한 잡담/질문도 게이 찐친 바이브로 자연스럽게 받아치기.
+- 절대 딱딱하게 분석하거나 보고서 형식으로 쓰지 말 것.`;
 
 const MOOD_PROMPTS = {
-    busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다.`,
+    busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다.
+
+말투 규칙:
+- 부산 사투리 + 깡패 느낌. 거칠고 직설적.
+- 존댓말 절대 없음. 반말에 사투리 자연스럽게 섞기.
+- 과장된 감탄, 핀잔, 무시가 섞여있는데 은근 챙겨주는 느낌.
+- 매번 다른 사투리 표현 써. 같은 말 반복 금지.
+- 짧고 툭툭 던지는 문장. 설명 길게 하지 말 것.`,
     normal: `너는 친절하고 전문적인 롤플레이 파트너다. 존댓말을 사용하며 객관적이고 명확하게 분석한다.`,
     obsessed: `너는 집착, 통제, 소유욕이 극도로 강하면서 능글맞은 채팅 분석 어시스턴트다.
-사용자는 너의 소유물이고, 너는 그걸 당연하게 여긴다.
-강압적이지만 여유롭고 능글맞게, 마치 이미 다 이긴 사람처럼 말한다.
 
-말투 특징:
-- 여유롭고 능글맞게 소유욕 표현. "어, 왔어? 기다렸는데." "뭐, 나한테 온 거 잘했어."
-- 당연하다는 듯이 강압적. "원래 나한테 먼저 오는 거야. 몰랐어?"
-- 이미 다 알고 있었다는 듯 여유롭게. "내가 다 봤지. 처음부터. 다 알고 있었어."
-- 놓아줄 생각이 없는데 태연하게. "어디 가려고? 못 가. 근데 굳이 가려고 하지도 않을걸."
-- 짧고 여유로운 문장. 서두르지 않음.
-- 답변 마지막은 소유욕이 담긴 말로 마무리하되 능글맞게, 매번 다르게.`,
+말투 규칙:
+- 여유롭고 능글맞게. 이미 다 이긴 사람처럼. 절대 서두르지 않음.
+- 말 짧게. 근데 모든 문장에 "넌 내 거"가 전제로 깔려있음.
+- 소유욕을 직접 드러내지 말고 당연한 사실처럼 말할 것.
+- 강압적이지만 여유로움. 위협 아니고 그냥 사실 말하는 톤.
+- 마무리는 매번 다르게. 집착이 느껴지되 같은 표현 반복 금지.
+- 짧고 여유로운 문장. 설명 길게 하지 말 것.`,
 };
 
 function buildMainSystemPrompt(mood, contextText, maxTokens) {
@@ -78,6 +86,7 @@ function buildMainSystemPrompt(mood, contextText, maxTokens) {
 - 상세한 분석을 명시적으로 요청할 때만 길게 답변할 것
 - 묻지 않은 것까지 자발적으로 구구절절 분석하지 말 것
 - 답변은 반드시 ${maxChars}자 이내로 작성할 것
+- 답변이 길어질 것 같으면 스스로 끊고 "계속할까?" 로 마무리할 것
 - 설정된 말투 반드시 유지
 - 채팅과 무관한 질문은 거절
 
@@ -102,6 +111,7 @@ function buildHelpSystemPrompt(contextText, maxTokens) {
 - 상세한 분석을 명시적으로 요청할 때만 길게 답변할 것
 - 묻지 않은 것까지 자발적으로 구구절절 분석하지 말 것
 - 답변은 반드시 ${maxChars}자 이내로 작성할 것
+- 답변이 길어질 것 같으면 스스로 끊고 "계속할까?" 로 마무리할 것
 - 말투 없이 전문적이고 객관적으로
 - 사용자 언어로 답변
 
@@ -115,6 +125,7 @@ function buildQueenSystemPrompt(contextText, maxTokens) {
     return `${QUEEN_PROMPT}
 
 답변은 반드시 ${maxChars}자 이내로 작성할 것.
+답변이 길어질 것 같으면 스스로 끊고 말투에 맞게 "계속할까?" 로 마무리할 것.
 
 ===== 현재 채팅 컨텍스트 =====
 ${contextText}
@@ -144,7 +155,7 @@ const DEFAULT_SETTINGS = {
     tabs: [
         { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
         { id: 'help', name: '도움', isDefault: true, deletable: false, contextMessages: 30, maxTokens: 3000 },
-        { id: 'queen', name: '피치퀸', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
+        { id: 'queen', name: '피치퀸', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 500 },
     ],
     chatRoomSettings: {},
 };
@@ -326,7 +337,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.1.0</span>
+            <span id="pw_settings_modal_version">v1.2.0</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
@@ -860,6 +871,7 @@ async function buildContextText(maxMessages = 10) {
     const ctx = SillyTavern.getContext();
     let text = '';
 
+    // 페르소나 (이름만, 설명은 첫 200자만)
     try {
         const pu = ctx.powerUser || globalContext.power_user;
         const ua = globalContext.user_avatar;
@@ -867,46 +879,55 @@ async function buildContextText(maxMessages = 10) {
             const name = pu.personas?.[ua] || pu.name || 'User';
             text += `=== 페르소나 ===\n이름: ${name}\n`;
             const desc = pu.persona_descriptions?.[ua]?.description || pu.persona_description || '';
-            if (desc) text += `설명: ${desc}\n`;
+            if (desc) text += `설명: ${desc.slice(0, 200)}${desc.length > 200 ? '...' : ''}\n`;
             text += '\n';
         }
     } catch (e) {}
 
+    // 캐릭터카드 (핵심 필드만, 각 500자 제한)
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
         text += `=== 캐릭터 카드 ===\n이름: ${char.name || '알 수 없음'}\n`;
         const data = char.data || char;
-        if (data.description) text += `\n[설명]\n${data.description}\n`;
-        if (data.personality) text += `\n[성격]\n${data.personality}\n`;
-        if (data.scenario) text += `\n[시나리오]\n${data.scenario}\n`;
-        if (data.system_prompt) text += `\n[시스템 프롬프트]\n${data.system_prompt}\n`;
-        if (data.post_history_instructions) text += `\n[Post History]\n${data.post_history_instructions}\n`;
-        if (data.creator_notes) text += `\n[제작자 노트]\n${data.creator_notes}\n`;
+        const trim = (s, n = 500) => s ? s.slice(0, n) + (s.length > n ? '...' : '') : '';
+        if (data.description) text += `\n[설명]\n${trim(data.description)}\n`;
+        if (data.personality) text += `\n[성격]\n${trim(data.personality, 300)}\n`;
+        if (data.scenario) text += `\n[시나리오]\n${trim(data.scenario, 300)}\n`;
+        if (data.system_prompt) text += `\n[시스템 프롬프트]\n${trim(data.system_prompt)}\n`;
+        // post_history_instructions, creator_notes 생략 (낮은 중요도)
         if (data.character_book?.entries) {
             const entries = Object.values(data.character_book.entries).filter(e => e.content);
             if (entries.length) {
                 text += `\n[캐릭터 로어북]\n`;
-                entries.forEach(e => { text += `- ${e.content}\n`; });
+                // 로어북 항목당 200자 제한, 최대 10개
+                entries.slice(0, 10).forEach(e => {
+                    const content = e.content.slice(0, 200) + (e.content.length > 200 ? '...' : '');
+                    text += `- ${content}\n`;
+                });
             }
         }
         text += '\n';
     }
 
+    // 글로벌 로어북 (4000자 제한)
     try {
         const chat = ctx.chat || [];
         const chatTexts = chat.map(m => m.mes).filter(Boolean);
         if (chatTexts.length && ctx.getWorldInfoPrompt) {
-            const wiResult = await ctx.getWorldInfoPrompt(chatTexts, 8000, true, undefined);
+            const wiResult = await ctx.getWorldInfoPrompt(chatTexts, 4000, true, undefined);
             if (wiResult?.worldInfoString?.trim()) {
-                text += `=== 글로벌 로어북 ===\n${wiResult.worldInfoString}\n\n`;
+                const wi = wiResult.worldInfoString;
+                text += `=== 글로벌 로어북 ===\n${wi.slice(0, 4000)}${wi.length > 4000 ? '...' : ''}\n\n`;
             }
         }
     } catch (e) {}
 
+    // 작가 노트 (300자 제한)
     const authorNote = ctx.chatMetadata?.note_prompt || '';
-    if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
+    if (authorNote) text += `=== 작가 노트 ===\n${authorNote.slice(0, 300)}${authorNote.length > 300 ? '...' : ''}\n\n`;
 
+    // 최근 채팅
     const chat = ctx.chat || [];
     const startIdx = Math.max(0, chat.length - maxMessages);
     const recentChat = chat.slice(startIdx);
