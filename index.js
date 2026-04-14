@@ -41,6 +41,8 @@ async function init() {
     });
 
     await loadSettingsUI();
+    injectMenuEntry();
+    injectSettingsModal();
     injectFloatButton();
     injectPopup();
     initEventListeners();
@@ -51,23 +53,15 @@ function saveSettings() {
     globalContext.saveSettingsDebounced();
 }
 
-// ===== 설정 UI =====
+// ===== 확장탭 설정 (API소스 / 메시지수 / 토큰수만) =====
 
 async function loadSettingsUI() {
     const settingsHtml = await globalContext.renderExtensionTemplateAsync(
         `third-party/${EXTENSION_NAME}`, 'settings',
     );
-    $('#extensionsMenu').append(settingsHtml);
+    $('#extensions_settings2').append(settingsHtml);
 
     const container = $('.pw_settings');
-
-    container.find('#pw_enabled')
-        .prop('checked', settings.enabled)
-        .on('change', function () {
-            settings.enabled = $(this).prop('checked');
-            saveSettings();
-            toggleFloatButton();
-        });
 
     container.find('#pw_source')
         .val(settings.source)
@@ -83,20 +77,6 @@ async function loadSettingsUI() {
         settings.profileId,
         (profile) => { settings.profileId = profile?.id ?? ''; saveSettings(); },
     );
-
-    container.find(`input[name="pw_mood"][value="${settings.mood}"]`).prop('checked', true);
-    container.find(`.pw_mood_card[data-mood="${settings.mood}"]`).addClass('active');
-    container.find('input[name="pw_mood"]').on('change', function () {
-        const mood = $(this).val();
-        settings.mood = mood;
-        saveSettings();
-        container.find('.pw_mood_card').removeClass('active');
-        container.find(`.pw_mood_card[data-mood="${mood}"]`).addClass('active');
-    });
-    container.find('.pw_mood_card').on('click', function () {
-        const mood = $(this).data('mood');
-        container.find(`input[name="pw_mood"][value="${mood}"]`).prop('checked', true).trigger('change');
-    });
 
     container.find('#pw_context_messages')
         .val(settings.contextMessages)
@@ -127,6 +107,127 @@ function updateSourceVisibility() {
     }
 }
 
+// ===== 매직완드 메뉴 항목 추가 =====
+
+function injectMenuEntry() {
+    if ($('#pw_menu_entry').length) return;
+
+    const entry = $(`
+        <div id="pw_menu_entry" class="list-group-item" title="Peach Whisper 설정 열기" style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">🍑</span>
+            <span>Peach Whisper</span>
+        </div>
+    `);
+
+    entry.on('click', () => {
+        openSettingsModal();
+    });
+
+    $('#extensionsMenu').append(entry);
+}
+
+// ===== 설정 모달 (홈화면) =====
+
+function injectSettingsModal() {
+    if ($('#pw_settings_modal').length) return;
+
+    const modal = $(`
+        <div id="pw_settings_modal">
+            <div id="pw_settings_modal_overlay"></div>
+            <div id="pw_settings_modal_box">
+                <div id="pw_settings_modal_header">
+                    <span style="font-size:20px;">🍑</span>
+                    <div>
+                        <div id="pw_settings_modal_title">Peach Whisper</div>
+                        <div id="pw_settings_modal_sub">OOC 채팅 분석 어시스턴트</div>
+                    </div>
+                    <span id="pw_settings_modal_version">v1.0</span>
+                    <button id="pw_settings_modal_close">✕</button>
+                </div>
+
+                <div id="pw_settings_modal_body">
+
+                    <!-- 버튼 활성화 -->
+                    <div class="pw_section">
+                        <div class="pw_section_label">기본 설정</div>
+                        <div class="pw_row">
+                            <div>
+                                <div class="pw_row_label">버튼 활성화</div>
+                                <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
+                            </div>
+                            <label class="pw_toggle">
+                                <input type="checkbox" id="pw_modal_enabled" />
+                                <span class="pw_toggle_track"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- AI 말투 -->
+                    <div class="pw_section">
+                        <div class="pw_section_label">AI 말투</div>
+                        <div class="pw_mood_grid">
+                            <div class="pw_mood_btn" data-mood="busan">
+                                <span class="pw_mood_emoji">🍑</span>
+                                <span class="pw_mood_name">부산깡패</span>
+                                <span class="pw_mood_desc">야 임마!</span>
+                            </div>
+                            <div class="pw_mood_btn" data-mood="shy">
+                                <span class="pw_mood_emoji">🍑</span>
+                                <span class="pw_mood_name">소심이</span>
+                                <span class="pw_mood_desc">죄송한데요...</span>
+                            </div>
+                            <div class="pw_mood_btn" data-mood="obsessed">
+                                <span class="pw_mood_emoji">🍑</span>
+                                <span class="pw_mood_name">집통소</span>
+                                <span class="pw_mood_desc">유아마인</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="pw_settings_modal_footer">
+                    <button id="pw_settings_modal_save">저장</button>
+                </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(modal);
+
+    $('#pw_settings_modal_overlay, #pw_settings_modal_close').on('click', closeSettingsModal);
+    $('#pw_settings_modal_save').on('click', () => {
+        saveSettings();
+        closeSettingsModal();
+    });
+
+    // 말투 선택
+    $('#pw_settings_modal').find('.pw_mood_btn').on('click', function () {
+        const mood = $(this).data('mood');
+        settings.mood = mood;
+        $('#pw_settings_modal .pw_mood_btn').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    // 버튼 활성화 토글
+    $('#pw_modal_enabled').on('change', function () {
+        settings.enabled = $(this).prop('checked');
+        toggleFloatButton();
+    });
+}
+
+function openSettingsModal() {
+    // 현재 설정값 반영
+    $('#pw_modal_enabled').prop('checked', settings.enabled);
+    $('#pw_settings_modal .pw_mood_btn').removeClass('active');
+    $(`#pw_settings_modal .pw_mood_btn[data-mood="${settings.mood}"]`).addClass('active');
+    $('#pw_settings_modal').addClass('visible');
+}
+
+function closeSettingsModal() {
+    $('#pw_settings_modal').removeClass('visible');
+}
+
 // ===== 플로팅 버튼 (드래그 가능) =====
 
 function injectFloatButton() {
@@ -135,17 +236,13 @@ function injectFloatButton() {
     const btn = $('<div id="pw_float_btn" title="Peach Whisper">🍑</div>');
     $('body').append(btn);
 
-    // 저장된 위치 복원
     if (settings.btnX !== null && settings.btnY !== null) {
         btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
     }
-
     if (!settings.enabled) btn.hide();
 
-    // 드래그 구현
-    let isDragging = false;
+    let isDragging = false, dragMoved = false;
     let dragStartX, dragStartY, btnStartX, btnStartY;
-    let dragMoved = false;
 
     btn.on('mousedown touchstart', function (e) {
         isDragging = true;
@@ -166,7 +263,6 @@ function injectFloatButton() {
         const dy = point.clientY - dragStartY;
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
         if (!dragMoved) return;
-
         const newX = Math.max(0, Math.min(window.innerWidth - 50, btnStartX + dx));
         const newY = Math.max(0, Math.min(window.innerHeight - 50, btnStartY + dy));
         btn.css({ right: 'auto', bottom: 'auto', left: newX + 'px', top: newY + 'px' });
@@ -179,30 +275,13 @@ function injectFloatButton() {
         if (!dragMoved) {
             togglePopup();
         } else {
-            // 위치 저장
             const offset = btn.offset();
             settings.btnX = offset.left;
             settings.btnY = offset.top;
             saveSettings();
-
-            // 팝업 위치도 버튼 기준으로 업데이트
             updatePopupPosition();
         }
     });
-}
-
-function updatePopupPosition() {
-    const btn = $('#pw_float_btn');
-    const popup = $('#pw_popup');
-    if (!popup.hasClass('visible')) return;
-    const btnOffset = btn.offset();
-    const popupH = popup.outerHeight();
-    const popupW = popup.outerWidth();
-    let top = btnOffset.top - popupH - 10;
-    let left = btnOffset.left + btn.outerWidth() / 2 - popupW / 2;
-    left = Math.max(8, Math.min(window.innerWidth - popupW - 8, left));
-    top = Math.max(8, top);
-    popup.css({ top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' });
 }
 
 function toggleFloatButton() {
@@ -214,7 +293,7 @@ function toggleFloatButton() {
     }
 }
 
-// ===== 팝업 (리사이즈 가능) =====
+// ===== 채팅 팝업 =====
 
 function injectPopup() {
     if ($('#pw_popup').length) return;
@@ -250,9 +329,7 @@ function injectPopup() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     });
 
-    // 리사이즈 핸들
     initResize();
-
     addGreetingMessage();
 }
 
@@ -261,18 +338,14 @@ function initResize() {
     const popup = document.getElementById('pw_popup');
     if (!handle || !popup) return;
 
-    let isResizing = false;
-    let startX, startY, startW, startH;
+    let isResizing = false, startX, startY, startW, startH;
 
     handle.addEventListener('mousedown', (e) => {
         isResizing = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startW = popup.offsetWidth;
-        startH = popup.offsetHeight;
+        startX = e.clientX; startY = e.clientY;
+        startW = popup.offsetWidth; startH = popup.offsetHeight;
         e.preventDefault();
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         const newW = Math.max(240, startW + (e.clientX - startX));
@@ -281,8 +354,21 @@ function initResize() {
         popup.style.height = newH + 'px';
         document.getElementById('pw_messages').style.maxHeight = (newH - 100) + 'px';
     });
-
     document.addEventListener('mouseup', () => { isResizing = false; });
+}
+
+function updatePopupPosition() {
+    const btn = $('#pw_float_btn');
+    const popup = $('#pw_popup');
+    if (!popup.hasClass('visible')) return;
+    const btnOffset = btn.offset();
+    const popupH = popup.outerHeight();
+    const popupW = popup.outerWidth();
+    let top = btnOffset.top - popupH - 10;
+    let left = btnOffset.left + btn.outerWidth() / 2 - popupW / 2;
+    left = Math.max(8, Math.min(window.innerWidth - popupW - 8, left));
+    top = Math.max(8, top);
+    popup.css({ top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' });
 }
 
 function addGreetingMessage() {
@@ -295,17 +381,11 @@ function addGreetingMessage() {
 }
 
 function togglePopup() {
-    const popup = $('#pw_popup');
-    if (popup.hasClass('visible')) {
-        closePopup();
-    } else {
-        openPopup();
-    }
+    $('#pw_popup').hasClass('visible') ? closePopup() : openPopup();
 }
 
 function openPopup() {
-    const popup = $('#pw_popup');
-    popup.addClass('visible');
+    $('#pw_popup').addClass('visible');
     updatePopupPosition();
     $('#pw_input').focus();
 }
@@ -324,7 +404,7 @@ function toggleCollapse() {
         body.removeClass('collapsed');
         handle.show();
         btn.text('∧');
-        $('#pw_popup').css('width', '');
+        $('#pw_popup').css('width', '300px');
     } else {
         body.addClass('collapsed');
         handle.hide();
@@ -346,7 +426,6 @@ function appendUserMessage(text) {
 }
 
 function appendAIMessage(text) {
-    // 줄바꿈을 <br><br>로 변환해서 문단 띄어쓰기
     const formatted = escapeHtml(text).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
     $('#pw_messages').append(`
         <div class="pw_msg_row">
@@ -369,9 +448,7 @@ function appendLoadingMessage() {
     scrollToBottom();
 }
 
-function removeLoadingMessage() {
-    $('#pw_loading_row').remove();
-}
+function removeLoadingMessage() { $('#pw_loading_row').remove(); }
 
 function scrollToBottom() {
     const msgs = document.getElementById('pw_messages');
@@ -424,27 +501,22 @@ async function generateResponse() {
     if (settings.source === 'main') {
         const { generateRaw } = globalContext;
         if (!generateRaw) throw new Error('generateRaw를 사용할 수 없습니다.');
-
         const result = await generateRaw({
             systemPrompt: systemPrompt,
             prompt: pwChatHistory[pwChatHistory.length - 1]?.content || '',
             streaming: false,
         });
         return result || '응답을 받지 못했습니다.';
-
     } else {
         if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
-
         const messages = [
             { role: 'system', content: systemPrompt },
             ...pwChatHistory,
         ];
-
         const response = await globalContext.ConnectionManagerRequestService.sendRequest(
             settings.profileId, messages, settings.maxTokens,
             { stream: false, extractData: true, includePreset: false, includeInstruct: false }
         );
-
         if (typeof response === 'string') return response;
         if (response?.choices?.[0]?.message?.content) return response.choices[0].message.content;
         return response?.content || response?.message || '응답을 받지 못했습니다.';
@@ -453,7 +525,6 @@ async function generateResponse() {
 
 function buildSystemPrompt(contextText) {
     const moodPrompt = MOOD_PROMPTS[settings.mood] || MOOD_PROMPTS.busan;
-
     return `${moodPrompt}
 
 너는 현재 SillyTavern 채팅 세션의 OOC(Out Of Character) 어시스턴트야.
@@ -476,7 +547,6 @@ function buildContextText() {
     const ctx = SillyTavern.getContext();
     let text = '';
 
-    // 캐릭터 전체 정보
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
@@ -489,8 +559,6 @@ function buildContextText() {
         if (data.system_prompt) text += `\n[캐릭터 시스템 프롬프트]\n${data.system_prompt}\n`;
         if (data.post_history_instructions) text += `\n[Post History Instructions]\n${data.post_history_instructions}\n`;
         if (data.creator_notes) text += `\n[제작자 노트]\n${data.creator_notes}\n`;
-
-        // 캐릭터 로어북
         if (data.character_book?.entries) {
             const entries = Object.values(data.character_book.entries).filter(e => e.content);
             if (entries.length > 0) {
@@ -501,24 +569,13 @@ function buildContextText() {
         text += '\n';
     }
 
-    // ST 글로벌 시스템 프롬프트
-    const stSystemPrompt = ctx.systemPrompt || ctx.substituteParams?.('[system_prompt]') || '';
-    if (stSystemPrompt) {
-        text += `=== ST 글로벌 시스템 프롬프트 ===\n${stSystemPrompt}\n\n`;
-    }
-
-    // 작가 노트
     const authorNote = ctx.chatMetadata?.note_prompt || '';
-    if (authorNote) {
-        text += `=== 작가 노트 ===\n${authorNote}\n\n`;
-    }
+    if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
 
-    // 최근 채팅 로그
     const chat = ctx.chat || [];
     const maxMsg = settings.contextMessages || 10;
     const startIdx = Math.max(0, chat.length - maxMsg);
     const recentChat = chat.slice(startIdx);
-
     if (recentChat.length > 0) {
         text += `=== 최근 채팅 (${recentChat.length}개 메시지) ===\n`;
         for (const msg of recentChat) {
@@ -535,7 +592,6 @@ function buildContextText() {
 
 function initEventListeners() {
     globalContext.eventSource.on(event_types.CHAT_CHANGED, () => {
-        console.log(`[${EXTENSION_NAME}] 채팅 변경 - 대화 초기화`);
         pwChatHistory = [];
         $('#pw_messages').empty();
         addGreetingMessage();
