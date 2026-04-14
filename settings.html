@@ -77,6 +77,18 @@
                 <span id="pw_context_messages_val" style="min-width: 32px; font-weight: 500;">10개</span>
             </div>
 
+            <hr class="m-t-1 m-b-1">
+
+            <!-- 최대 토큰 수 -->
+            <div>
+                <label for="pw_max_tokens">최대 응답 토큰 수</label>
+                <small class="notes">응답이 잘릴 경우 높여주세요 (기본 1000)</small>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                <input type="range" id="pw_max_tokens" min="256" max="4096" step="256" value="1000" style="flex: 1;" />
+                <span id="pw_max_tokens_val" style="min-width: 40px; font-weight: 500;">1000</span>
+            </div>
+
         </div>
     </div>
 </div>

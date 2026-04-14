@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
     profileId: '',
     mood: 'busan',
     contextMessages: 10,
+    maxTokens: 1000,
 };
 
 let settings = {};
@@ -62,7 +63,7 @@ async function loadSettingsUI() {
         `third-party/${EXTENSION_NAME}`,
         'settings',
     );
-    $('#extensions_settings').append(settingsHtml);
+    $('#extensions_settings2').append(settingsHtml);
 
     const container = $('.pw_settings');
 
@@ -123,6 +124,17 @@ async function loadSettingsUI() {
             saveSettings();
         });
     container.find('#pw_context_messages_val').text(`${settings.contextMessages}개`);
+
+    // 최대 토큰 슬라이더
+    container.find('#pw_max_tokens')
+        .val(settings.maxTokens)
+        .on('input', function () {
+            const val = $(this).val();
+            settings.maxTokens = Number(val);
+            container.find('#pw_max_tokens_val').text(`${val}`);
+            saveSettings();
+        });
+    container.find('#pw_max_tokens_val').text(`${settings.maxTokens}`);
 }
 
 function updateSourceVisibility() {
@@ -230,13 +242,13 @@ function closePopup() {
 function toggleCollapse() {
     const body = $('#pw_popup_body');
     const btn = $('#pw_popup_header .pw_toggle_btn');
-    const isCollapsed = body.is(':hidden');
+    const isCollapsed = body.hasClass('collapsed');
 
     if (isCollapsed) {
-        body.show();
+        body.removeClass('collapsed');
         btn.removeClass('collapsed');
     } else {
-        body.hide();
+        body.addClass('collapsed');
         btn.addClass('collapsed');
     }
 }
@@ -366,7 +378,7 @@ async function generateResponse(userMessage) {
         const response = await globalContext.ConnectionManagerRequestService.sendRequest(
             settings.profileId,
             messages,
-            1000,
+            settings.maxTokens,
             { stream: false, extractData: true, includePreset: false, includeInstruct: false }
         );
 
