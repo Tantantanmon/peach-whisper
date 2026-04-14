@@ -1,10 +1,15 @@
 /**
- * Peach Whisper v1.0.4 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.0.6 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
 
 const EXTENSION_NAME = 'peach-whisper';
+
+function isMobile() {
+    try { return window.matchMedia('(max-width:430px),(pointer:coarse)').matches; }
+    catch { return window.innerWidth <= 430; }
+}
 
 const MOOD_PROMPTS = {
     busan: `너는 부산 사투리와 깡패 말투를 쓰는 롤플레이 파트너다. 말투와 분석 내용 전부 거칠고 직설적인 부산 깡패체로 작성한다. 예: "야 임마, 딱 보이까네~", "내가 하나하나 짚어줄 테니까 똑똑히 들어라"`,
@@ -52,25 +57,40 @@ ${contextText}
 }
 
 function buildHelpSystemPrompt(contextText) {
-    return `너는 SillyTavern 롤플레이 전문 분석가이자 컨설턴트야.
-아래 제공된 ST 전체 설정을 완전히 숙지하고 있어.
+    return `너는 SillyTavern 롤플레이 전문 컨설턴트야.
+아래 제공된 캐릭터카드, 로어북, 페르소나, 채팅 로그를 완전히 숙지하고 있어.
 
-## 할 수 있는 것들
-1. **프롬프트 충돌 분석** - 규칙들 간 모순/충돌 찾기, 구체적 텍스트 인용해서 명확하게 제시
-2. **캐릭터 시트 분석** - 설정의 강점/약점/일관성 검토, 개선점 제안
-3. **프롬프트 설계/개선** - 더 효과적인 지시문 구조 제안
-4. **OOC 지시문 생성** - 특정 상황 유도하는 OOC 지시문 직접 작성
-5. **스토리/플롯 아이디어** - 현재 설정과 흐름 기반 에피소드/전개 제안
-6. **캐릭터 행동 분석** - 설정대로 행동하고 있는지, 왜 이상하게 구는지 원인 파악
+## 역할
+
+**1. 캐릭터카드 분석 & 개선**
+- 캐릭터 설정의 강점/약점/일관성 검토
+- 설정 내 충돌/모순 찾기, 구체적 텍스트 인용해서 제시
+- 더 효과적인 캐릭터 설정 구조 제안
+
+**2. 캐릭터 행동 분석**
+- 채팅 로그와 캐릭터 설정 비교
+- 설정대로 행동하고 있는지, 왜 이상하게 구는지 원인 파악
+- 캐릭터 붕괴 징후 감지 및 교정 방향 제시
+- 로어북/세계관 설정과 행동 충돌 여부 확인
+
+**3. OOC 지시문 생성**
+- 사용자가 원하는 상황/분위기/전개를 말하면 OOC 지시문 직접 작성
+- 현재 캐릭터 설정에 맞게 최적화된 지시문 제공
+- 시간 점프, 분위기 전환, 갈등 유도 등 다양한 상황 커버
+
+**4. 스토리/에피소드 설계**
+- 현재 관계와 흐름 기반으로 자연스러운 전개 제안
+- 캐릭터 설정과 충돌하지 않는 에피소드 아이디어 제공
+- 로어북 세계관과 일관된 스토리 방향 제시
 
 ## 답변 방식
 - 말투 없이 전문적이고 객관적으로
-- 반드시 구체적인 텍스트 인용해서 근거 제시
+- 구체적인 텍스트 인용해서 근거 제시
 - 충돌/문제점 발견 시 수정 제안까지
 - 문단 나눠서 읽기 쉽게
 - 사용자 언어로 답변
 
-===== 현재 ST 전체 설정 =====
+===== 현재 ST 설정 =====
 ${contextText}
 ===========================`;
 }
@@ -111,6 +131,8 @@ const DEFAULT_SETTINGS = {
     fontSize: 13,
     btnX: null,
     btnY: null,
+    popupX: null,
+    popupY: null,
     tabs: [
         { id: 'main', name: '메인', isDefault: true, deletable: false, contextMessages: 10, maxTokens: 1000 },
         { id: 'sim', name: '시뮬', isDefault: true, deletable: false, contextMessages: 20, maxTokens: 2000, simPrompt: '', simResults: [] },
@@ -269,7 +291,7 @@ function injectSettingsModal() {
                         <div id="pw_settings_modal_title">Peach Whisper</div>
                         <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
                     </div>
-                    <span id="pw_settings_modal_version">v1.0.4</span>
+                    <span id="pw_settings_modal_version">v1.0.6</span>
                     <button id="pw_settings_modal_close">✕</button>
                 </div>
                 <div id="pw_settings_modal_body">
@@ -325,7 +347,8 @@ function injectSettingsModal() {
     `);
 
     $('body').append(modal);
-    $('#pw_settings_modal_overlay, #pw_settings_modal_close').on('click', closeSettingsModal);
+    $('#pw_settings_modal_overlay').on('click', closeSettingsModal);
+    $('#pw_settings_modal_close').on('click', closeSettingsModal);
     $('#pw_modal_save').on('click', saveModalSettings);
     $('#pw_modal_reset').on('click', resetModalSettings);
     $('#pw_settings_modal .pw_mood_btn').on('click', function () {
@@ -349,7 +372,6 @@ function renderTabSettingsList() {
         const deleteBtn = !tab.isDefault ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
         const badge = tab.isDefault ? `<span class="pw_tab_badge">기본</span>` : '';
 
-        // 커스텀 탭만 시스템 프롬프트 입력창 표시 (시뮬 프롬프트 입력창 제거)
         let extraInputs = '';
         if (!tab.isDefault) {
             extraInputs = `
@@ -483,7 +505,7 @@ function injectFloatButton() {
         if (!dragMoved) { togglePopup(); }
         else {
             const off = btn.offset(); settings.btnX = off.left; settings.btnY = off.top;
-            saveSettings(); updatePopupPosition();
+            saveSettings();
         }
     });
 }
@@ -512,6 +534,11 @@ function injectPopup() {
         </div>
     `);
     $('body').append(popup);
+
+    // 저장된 팝업 위치 복원
+    if (settings.popupX !== null && settings.popupY !== null) {
+        popup.css({ right: 'auto', bottom: 'auto', left: settings.popupX + 'px', top: settings.popupY + 'px' });
+    }
 
     settings.tabs.forEach(tab => addTabToPopup(tab.id, tab.name));
     switchTab('main');
@@ -572,11 +599,9 @@ function addTabToPopup(tabId, tabName) {
         window.pwToggleSimPrompt = function() {
             const content = document.getElementById('pw_sim_prompt_content');
             const arrow = document.getElementById('pw_sim_prompt_arrow');
-            const isOpen = content.classList.contains('open');
             content.classList.toggle('open');
-            arrow.classList.toggle('open');
+            if (arrow) arrow.classList.toggle('open');
         };
-
         contentEl.find('#pw_sim_prompt').on('input', function () {
             const tab = settings.tabs.find(t => t.id === 'sim');
             if (tab) { tab.simPrompt = $(this).val(); saveSettings(); }
@@ -590,7 +615,7 @@ function addTabToPopup(tabId, tabName) {
     });
 }
 
-// ===== 시뮬 결과 관리 =====
+// ===== 시뮬 결과 =====
 function renderSimResults() {
     const container = $('#pw_sim_results');
     if (!container.length) return;
@@ -619,16 +644,13 @@ function renderSimResults() {
 
         item.find('.pw_sim_result_header').on('click', function (e) {
             if ($(e.target).hasClass('pw_sim_result_delete')) return;
-            const content = item.find('.pw_sim_result_content');
-            const arrow = item.find('.pw_sim_result_arrow');
-            content.toggleClass('open');
-            arrow.toggleClass('open');
+            item.find('.pw_sim_result_content').toggleClass('open');
+            item.find('.pw_sim_result_arrow').toggleClass('open');
         });
 
         item.find('.pw_sim_result_delete').on('click', function (e) {
             e.stopPropagation();
-            const i = Number($(this).data('idx'));
-            simTab.simResults.splice(i, 1);
+            simTab.simResults.splice(Number($(this).data('idx')), 1);
             saveSettings();
             renderSimResults();
         });
@@ -645,27 +667,25 @@ function switchTab(tabId) {
     $(`#pw_content_${tabId}`).addClass('active');
 }
 
-function updatePopupPosition() {
-    const btn = $('#pw_float_btn');
-    const popup = $('#pw_popup');
-    if (!popup.hasClass('visible')) return;
-    const btnOffset = btn.offset();
-    const popupH = popup.outerHeight();
-    const popupW = popup.outerWidth();
-    let top = btnOffset.top - popupH - 10;
-    let left = btnOffset.left + btn.outerWidth() / 2 - popupW / 2;
-    left = Math.max(8, Math.min(window.innerWidth - popupW - 8, left));
-    top = Math.max(8, top);
-    popup.css({ top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' });
-}
-
 function togglePopup() {
     $('#pw_popup').hasClass('visible') ? closePopup() : openPopup();
 }
 
 function openPopup() {
-    $('#pw_popup').addClass('visible');
-    updatePopupPosition();
+    const popup = $('#pw_popup');
+    popup.addClass('visible');
+    // 저장된 위치 없으면 기본 위치
+    if (settings.popupX === null || settings.popupY === null) {
+        const btn = $('#pw_float_btn');
+        const btnOffset = btn.offset();
+        const popupH = popup.outerHeight() || 400;
+        const popupW = popup.outerWidth() || 300;
+        let top = (btnOffset?.top || window.innerHeight - 200) - popupH - 10;
+        let left = (btnOffset?.left || window.innerWidth - 320) + (btn.outerWidth() || 46) / 2 - popupW / 2;
+        left = Math.max(8, Math.min(window.innerWidth - popupW - 8, left));
+        top = Math.max(8, top);
+        popup.css({ top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto' });
+    }
     $(`#pw_input_${activeTabId}`).focus();
 }
 
@@ -704,43 +724,79 @@ async function clearCurrentTab() {
     addGreetingMessage(activeTabId);
 }
 
+// ===== 팝업 드래그 (버튼과 독립) =====
+function initPopupDrag() {
+    const popup = document.getElementById('pw_popup');
+    const header = document.getElementById('pw_popup_header');
+    let isDragging = false, startX, startY, origLeft, origTop;
+
+    const onStart = (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        isDragging = true;
+        const rect = popup.getBoundingClientRect();
+        origLeft = rect.left; origTop = rect.top;
+        const p = e.touches ? e.touches[0] : e;
+        startX = p.clientX; startY = p.clientY;
+        popup.style.right = 'auto'; popup.style.bottom = 'auto';
+        popup.style.left = origLeft + 'px'; popup.style.top = origTop + 'px';
+        e.preventDefault();
+    };
+
+    const onMove = (e) => {
+        if (!isDragging) return;
+        const p = e.touches ? e.touches[0] : e;
+        const newLeft = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + p.clientX - startX));
+        const newTop = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + p.clientY - startY));
+        popup.style.left = newLeft + 'px'; popup.style.top = newTop + 'px';
+    };
+
+    const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        // 팝업 위치 저장
+        const rect = popup.getBoundingClientRect();
+        settings.popupX = rect.left; settings.popupY = rect.top;
+        saveSettings();
+    };
+
+    header.addEventListener('mousedown', onStart);
+    header.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+}
+
+// ===== 리사이즈 (터치 포함) =====
 function initResize() {
     const handle = document.getElementById('pw_resize_handle');
     const popup = document.getElementById('pw_popup');
     if (!handle || !popup) return;
     let isResizing = false, startX, startY, startW, startH;
-    handle.addEventListener('mousedown', e => {
-        isResizing = true; startX = e.clientX; startY = e.clientY;
-        startW = popup.offsetWidth; startH = popup.offsetHeight; e.preventDefault();
-    });
-    document.addEventListener('mousemove', e => {
-        if (!isResizing) return;
-        popup.style.width = Math.max(260, startW + (e.clientX - startX)) + 'px';
-        popup.style.height = Math.max(200, startH + (e.clientY - startY)) + 'px';
-    });
-    document.addEventListener('mouseup', () => { isResizing = false; });
-}
 
-function initPopupDrag() {
-    const popup = document.getElementById('pw_popup');
-    const header = document.getElementById('pw_popup_header');
-    let isDragging = false, startX, startY, origLeft, origTop;
-    header.addEventListener('mousedown', e => {
-        if (e.target.tagName === 'BUTTON') return;
-        isDragging = true;
-        const rect = popup.getBoundingClientRect();
-        origLeft = rect.left; origTop = rect.top;
-        startX = e.clientX; startY = e.clientY;
-        popup.style.right = 'auto'; popup.style.bottom = 'auto';
-        popup.style.left = origLeft + 'px'; popup.style.top = origTop + 'px';
+    const onStart = (e) => {
+        isResizing = true;
+        const p = e.touches ? e.touches[0] : e;
+        startX = p.clientX; startY = p.clientY;
+        startW = popup.offsetWidth; startH = popup.offsetHeight;
         e.preventDefault();
-    });
-    document.addEventListener('mousemove', e => {
-        if (!isDragging) return;
-        popup.style.left = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, origLeft + e.clientX - startX)) + 'px';
-        popup.style.top = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, origTop + e.clientY - startY)) + 'px';
-    });
-    document.addEventListener('mouseup', () => { isDragging = false; });
+    };
+
+    const onMove = (e) => {
+        if (!isResizing) return;
+        const p = e.touches ? e.touches[0] : e;
+        popup.style.width = Math.max(260, startW + (p.clientX - startX)) + 'px';
+        popup.style.height = Math.max(200, startH + (p.clientY - startY)) + 'px';
+    };
+
+    const onEnd = () => { isResizing = false; };
+
+    handle.addEventListener('mousedown', onStart);
+    handle.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
 }
 
 // ===== 메시지 =====
@@ -750,12 +806,11 @@ function addGreetingMessage(tabId) {
         normal: '안녕하세요! 채팅 관련해서 궁금한 점이 있으시면 편하게 물어봐 주세요.',
         obsessed: '어, 왔어? 기다렸는데. 채팅 다 봤어. 처음부터. 뭐든 물어봐.',
     };
-    const helpGreeting = '안녕하세요! ST 롤플레이 전문 분석가입니다.\n\n프롬프트 충돌 분석, 캐릭터 시트 검토, OOC 지시문 생성 등 무엇이든 도와드릴게요.';
+    const helpGreeting = '안녕하세요! ST 롤플레이 전문 컨설턴트입니다.\n\n캐릭터카드 분석, OOC 지시문 생성, 캐릭터 행동 분석, 에피소드 설계 등 무엇이든 도와드릴게요.';
 
     let msg;
     if (tabId === 'help') msg = helpGreeting;
     else msg = greetings[settings.mood] || greetings.normal;
-
     appendMessage(tabId, 'assistant', msg, false);
 }
 
@@ -800,7 +855,7 @@ function appendLoading(tabId) {
 
 function appendLoading2(containerId) {
     $(`#${containerId}`).append(`
-        <div id="pw_sim_loading" style="padding:12px; font-size:12px; color:#aaa; text-align:center;">
+        <div id="pw_sim_loading" style="padding:12px; text-align:center;">
             <div class="pw_loading" style="justify-content:center;"><span></span><span></span><span></span></div>
         </div>
     `);
@@ -841,13 +896,12 @@ async function handleSimRun() {
     if (!simPrompt) { alert('시뮬 프롬프트를 입력해주세요.'); return; }
 
     // 실행 시 프롬프트 섹션 자동 접기
-    const promptContent = document.getElementById("pw_sim_prompt_content");
-    const promptArrow = document.getElementById("pw_sim_prompt_arrow");
-    if (promptContent && promptContent.classList.contains("open")) {
-        promptContent.classList.remove("open");
-        if (promptArrow) promptArrow.classList.remove("open");
+    const promptContent = document.getElementById('pw_sim_prompt_content');
+    const promptArrow = document.getElementById('pw_sim_prompt_arrow');
+    if (promptContent?.classList.contains('open')) {
+        promptContent.classList.remove('open');
+        if (promptArrow) promptArrow.classList.remove('open');
     }
-
 
     isGenerating = true;
     $('#pw_sim_run_btn').prop('disabled', true);
@@ -856,14 +910,10 @@ async function handleSimRun() {
     try {
         const response = await generateResponse('sim', '');
         $('#pw_sim_loading').remove();
-
         const simTab = settings.tabs.find(t => t.id === 'sim');
         if (!simTab.simResults) simTab.simResults = [];
-
-        // 최대 3개 유지
         simTab.simResults.push(response);
         if (simTab.simResults.length > 3) simTab.simResults.shift();
-
         saveSettings();
         renderSimResults();
     } catch (err) {
@@ -878,7 +928,7 @@ async function handleSimRun() {
 // ===== AI 응답 =====
 async function generateResponse(tabId, userMessage) {
     const tabSettings = getTabSettings(tabId);
-    const contextText = buildContextText(tabSettings.contextMessages);
+    const contextText = await buildContextText(tabSettings.contextMessages);
     const systemPrompt = getSystemPrompt(tabId, contextText);
     const history = (tabHistories[tabId] || []).slice(-20).map(msg => ({
         role: msg.role === 'assistant' ? 'model' : msg.role,
@@ -920,10 +970,11 @@ function getSystemPrompt(tabId, contextText) {
     return buildCustomSystemPrompt(tab?.customPrompt || '', settings.mood, contextText);
 }
 
-function buildContextText(maxMessages = 10) {
+async function buildContextText(maxMessages = 10) {
     const ctx = SillyTavern.getContext();
     let text = '';
 
+    // 페르소나
     try {
         const pu = ctx.powerUser || globalContext.power_user;
         const ua = globalContext.user_avatar;
@@ -936,6 +987,7 @@ function buildContextText(maxMessages = 10) {
         }
     } catch (e) {}
 
+    // 캐릭터 카드
     const charId = ctx.characterId;
     const char = ctx.characters?.[charId];
     if (char) {
@@ -957,9 +1009,23 @@ function buildContextText(maxMessages = 10) {
         text += '\n';
     }
 
+    // 글로벌 로어북
+    try {
+        const chat = ctx.chat || [];
+        const chatTexts = chat.map(m => m.mes).filter(Boolean);
+        if (chatTexts.length && ctx.getWorldInfoPrompt) {
+            const wiResult = await ctx.getWorldInfoPrompt(chatTexts, 8000, true, undefined);
+            if (wiResult?.worldInfoString?.trim()) {
+                text += `=== 글로벌 로어북 ===\n${wiResult.worldInfoString}\n\n`;
+            }
+        }
+    } catch (e) {}
+
+    // 작가 노트
     const authorNote = ctx.chatMetadata?.note_prompt || '';
     if (authorNote) text += `=== 작가 노트 ===\n${authorNote}\n\n`;
 
+    // 채팅 로그
     const chat = ctx.chat || [];
     const startIdx = Math.max(0, chat.length - maxMessages);
     const recentChat = chat.slice(startIdx);
@@ -975,6 +1041,7 @@ function buildContextText(maxMessages = 10) {
     return text.trim();
 }
 
+// ===== 이벤트 =====
 function initEventListeners() {
     globalContext.eventSource.on(event_types.CHAT_CHANGED, async () => {
         currentChatId = globalContext.getCurrentChatId?.() || 'default';
