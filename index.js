@@ -538,6 +538,11 @@ function saveModalSettings($box) {
     settings.fontSize = Number($container.find('#pw_modal_fontsize').val()) || 13;
     saveSettings();
     applyFontSize();
+
+    // 채팅창 탭바 순서 재정렬
+    const $tabBar = $('#pw_tab_bar');
+    settings.tabs.forEach(t => $tabBar.append($(`#pw_tab_${t.id}`).detach()));
+
     closeSettingsModal();
 }
 
