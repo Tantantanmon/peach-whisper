@@ -510,21 +510,35 @@ function injectFloatButton() {
     const btn = $('<div id="pw_float_btn" title="Peach Whisper">🍑</div>');
     $('body').append(btn);
 
-    if (settings.btnX !== null && settings.btnY !== null) {
-        btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
-    } else {
-        setTimeout(() => {
-            const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
-            const btnSize = isMobile() ? 38 : 46;
-            const rightOffset = isMobile() ? 12 : 20;
-            if (inputForm) {
-                const rect = inputForm.getBoundingClientRect();
-                const newTop = rect.top - btnSize - 10;
-                const newLeft = window.innerWidth - btnSize - rightOffset;
-                btn.css({ right: 'auto', bottom: 'auto', left: newLeft + 'px', top: newTop + 'px' });
-            }
-        }, 500);
+    function positionBtn() {
+        if (settings.btnX !== null && settings.btnY !== null) {
+            btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
+            return;
+        }
+        const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
+        const btnSize = isMobile() ? 38 : 46;
+        const rightOffset = isMobile() ? 12 : 20;
+        const gap = 10;
+        if (inputForm) {
+            const rect = inputForm.getBoundingClientRect();
+            // 모바일에서 visualViewport 기준으로 실제 보이는 영역 사용
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const viewportOffsetTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+            const inputTop = rect.top - viewportOffsetTop;
+            const newTop = Math.min(inputTop - btnSize - gap, viewportHeight - btnSize - gap) + viewportOffsetTop;
+            const newLeft = window.innerWidth - btnSize - rightOffset;
+            btn.css({ right: 'auto', bottom: 'auto', left: newLeft + 'px', top: newTop + 'px' });
+        }
     }
+
+    setTimeout(positionBtn, 500);
+
+    // 화면 크기/키보드 변화 대응
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', positionBtn);
+        window.visualViewport.addEventListener('scroll', positionBtn);
+    }
+    window.addEventListener('resize', positionBtn);
 
     if (!settings.enabled) btn.hide();
 
