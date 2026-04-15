@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.2.0 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.3.0 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -337,7 +337,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.2.0</span>
+            <span id="pw_settings_modal_version">v1.3.0</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
@@ -599,8 +599,25 @@ function injectPopup() {
 }
 
 function addTabToPopup(tabId, tabName) {
-    const tabEl = $(`<div class="pw_tab" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}</div>`);
-    tabEl.on('click', () => switchTab(tabId));
+    const tab = settings.tabs.find(t => t.id === tabId);
+    const isDeletable = tab && !tab.isDefault;
+    const deleteBtn = isDeletable ? `<span class="pw_tab_close" data-tabid="${tabId}">✕</span>` : '';
+    const tabEl = $(`<div class="pw_tab${isDeletable ? ' pw_tab_closable' : ''}" id="pw_tab_${tabId}" data-tabid="${tabId}" draggable="true">${tabName}${deleteBtn}</div>`);
+    tabEl.on('click', function(e) {
+        if ($(e.target).hasClass('pw_tab_close')) return;
+        switchTab(tabId);
+    });
+    tabEl.find('.pw_tab_close').on('click', function(e) {
+        e.stopPropagation();
+        deleteTab(tabId);
+    });
+
+    // 드래그 이벤트
+    tabEl[0].addEventListener('dragstart', onTabDragStart);
+    tabEl[0].addEventListener('dragover', onTabDragOver);
+    tabEl[0].addEventListener('drop', onTabDrop);
+    tabEl[0].addEventListener('dragend', onTabDragEnd);
+
     $('#pw_tab_bar #pw_tab_add').before(tabEl);
 
     const placeholder = tabId === 'help' ? '롤플레이 관련 질문하기...' : '질문하기...';
@@ -609,7 +626,7 @@ function addTabToPopup(tabId, tabName) {
         <div class="pw_input_area">
             <input type="text" placeholder="${placeholder}" id="pw_input_${tabId}" autocomplete="off" />
             <button class="pw_send_btn" data-tabid="${tabId}">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#F0A0B8" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#F0A0B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
         </div>`;
 
@@ -620,6 +637,45 @@ function addTabToPopup(tabId, tabName) {
     contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(tabId); }
     });
+}
+
+let dragSrcTabId = null;
+
+function onTabDragStart(e) {
+    dragSrcTabId = e.currentTarget.dataset.tabid;
+    e.currentTarget.style.opacity = '0.5';
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function onTabDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function onTabDrop(e) {
+    e.stopPropagation();
+    const targetTabId = e.currentTarget.dataset.tabid;
+    if (dragSrcTabId === targetTabId) return;
+    const srcIdx = settings.tabs.findIndex(t => t.id === dragSrcTabId);
+    const tgtIdx = settings.tabs.findIndex(t => t.id === targetTabId);
+    if (srcIdx === -1 || tgtIdx === -1) return;
+    const [removed] = settings.tabs.splice(srcIdx, 1);
+    settings.tabs.splice(tgtIdx, 0, removed);
+    saveSettings();
+    // 탭바 DOM 순서 재정렬
+    const $tabBar = $('#pw_tab_bar');
+    const $add = $('#pw_tab_add').detach();
+    settings.tabs.forEach(t => {
+        $tabBar.append($(`#pw_tab_${t.id}`).detach());
+    });
+    $tabBar.append($add);
+    return false;
+}
+
+function onTabDragEnd(e) {
+    e.currentTarget.style.opacity = '1';
+    dragSrcTabId = null;
 }
 
 function switchTab(tabId) {
@@ -738,9 +794,23 @@ function initPopupDrag() {
 
 function addGreetingMessage(tabId) {
     const greetings = {
-        busan: '야 임마, 내가 채팅 내용 다 읽어주께. 뭐 물어볼끼가?',
-        normal: '안녕하세요! 채팅 관련해서 궁금한 점이 있으시면 편하게 물어봐 주세요.',
-        obsessed: '어, 왔어? 기다렸는데. 채팅 다 봤어. 처음부터. 뭐든 물어봐.',
+        busan: [
+            '야 임마, 내가 채팅 내용 다 읽어주께. 뭐 물어볼끼가?',
+            '어, 왔나. 채팅 다 봤다. 뭐가 궁금하노?',
+            '야, 니 채팅 내가 다 읽었다 아이가. 빨리 물어봐라.',
+            '뭐꼬, 또 캐릭터 이상하게 구나? 말해봐라.',
+            '왔나. 채팅 봤는데 할말 있다. 뭐 물어볼끼 있나?',
+        ],
+        normal: [
+            '안녕하세요! 채팅 관련해서 궁금한 점이 있으시면 편하게 물어봐 주세요.',
+        ],
+        obsessed: [
+            '어, 왔어? 기다렸는데. 채팅 다 봤어. 처음부터. 뭐든 물어봐.',
+            '늦었네. 뭐 하다 왔어? ...됐어, 왔으면 됐지.',
+            '어. 알고 있었어. 올 줄. 뭐든 물어봐.',
+            '채팅 다 읽었어. 처음부터 끝까지. 숨길 거 없어.',
+            '기다렸어. 오래. 근데 말 안 할 거야. 그냥 물어봐.',
+        ],
     };
     const helpGreeting = '안녕하세요! ST 롤플레이 전문 컨설턴트입니다.\n\n캐릭터카드 분석, OOC 지시문 생성, 캐릭터 행동 분석, 에피소드 설계 등 무엇이든 도와드릴게요.';
     const queenGreeting = '오 마이 갓, 자기야!! 지저스!! 언니가 왔어! 🔮💅\n채팅 다 봤거든? 뒷담이든 타로든 사주든 뭐든 다 OK. 복채? 넌 존재 자체가 복채야. 어서 털어놔 비치!';
@@ -748,7 +818,10 @@ function addGreetingMessage(tabId) {
     let msg;
     if (tabId === 'help') msg = helpGreeting;
     else if (tabId === 'queen') msg = queenGreeting;
-    else msg = greetings[settings.mood] || greetings.normal;
+    else {
+        const pool = greetings[settings.mood] || greetings.normal;
+        msg = pool[Math.floor(Math.random() * pool.length)];
+    }
     appendMessage(tabId, 'assistant', msg, false);
 }
 
