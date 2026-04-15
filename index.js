@@ -402,11 +402,13 @@ function renderTabSettingsList($box) {
 
     settings.tabs.forEach(tab => {
         const tabSettings = chatRoomTabs[tab.id] || { contextMessages: tab.contextMessages, maxTokens: tab.maxTokens };
-        const deleteBtn = !tab.isDefault ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
-        const badge = tab.isDefault ? `<span class="pw_tab_badge">기본</span>` : '';
+        // 메인 탭만 삭제 불가, 나머지는 다 삭제 가능
+        const deleteBtn = tab.id !== 'main' ? `<button class="pw_tab_delete" data-tabid="${tab.id}">✕</button>` : '';
+        const badge = tab.id === 'main' ? `<span class="pw_tab_badge">기본</span>` : '';
+        const dragHandle = `<span class="pw_tab_drag_handle" style="cursor:grab;color:#ccc;margin-right:6px;font-size:13px;">⠿</span>`;
 
         let extraInputs = '';
-        if (!tab.isDefault) {
+        if (tab.id !== 'main' && tab.id !== 'help' && tab.id !== 'queen') {
             extraInputs = `
                 <div style="margin-top:8px;">
                     <div class="pw_custom_prompt_toggle" data-tabid="${tab.id}" style="font-size:11px;color:#888780;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
@@ -420,8 +422,9 @@ function renderTabSettingsList($box) {
         }
 
         const item = $(`
-            <div class="pw_tab_item" data-tabid="${tab.id}">
+            <div class="pw_tab_item" data-tabid="${tab.id}" style="cursor:default;">
                 <div class="pw_tab_header">
+                    ${dragHandle}
                     <span class="pw_tab_name">${tab.name}</span>
                     ${badge}${deleteBtn}
                 </div>
@@ -435,6 +438,48 @@ function renderTabSettingsList($box) {
             </div>
         `);
         list.append(item);
+    });
+
+    // 탭 드래그 순서 변경
+    list.find('.pw_tab_item').each(function() {
+        const el = this;
+        let isDragging = false, startY, startIdx, placeholder;
+
+        $(el).find('.pw_tab_drag_handle').on('mousedown touchstart', function(e) {
+            isDragging = true;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            startIdx = $(el).index();
+            $(el).css({ opacity: '0.5' });
+            e.preventDefault();
+        });
+
+        $(document).on('mousemove.tabdrag touchmove.tabdrag', function(e) {
+            if (!isDragging) return;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const items = list.find('.pw_tab_item').toArray();
+            const target = items.find(item => {
+                if (item === el) return false;
+                const r = item.getBoundingClientRect();
+                return clientY >= r.top && clientY <= r.bottom;
+            });
+            if (!target) return;
+            const targetIdx = $(target).index();
+            if (targetIdx < $(el).index()) $(el).insertBefore(target);
+            else $(el).insertAfter(target);
+        });
+
+        $(document).on('mouseup.tabdrag touchend.tabdrag', function() {
+            if (!isDragging) return;
+            isDragging = false;
+            $(el).css({ opacity: '1' });
+            // settings.tabs 순서 업데이트
+            const newOrder = list.find('.pw_tab_item').map(function() {
+                return $(this).data('tabid');
+            }).get();
+            settings.tabs.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+            saveSettings();
+            $(document).off('mousemove.tabdrag touchmove.tabdrag mouseup.tabdrag touchend.tabdrag');
+        });
     });
 
     list.find('.pw_custom_prompt_toggle').on('click', function () {
