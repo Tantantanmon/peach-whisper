@@ -60,7 +60,7 @@
 #pw_float_btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
 /* 채팅 팝업 */
-#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; max-height: 80vh; height: auto; background: #fff; border: 1px solid #E8E0E4; border-radius: 16px; overflow: hidden; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: none; flex-direction: column; }
+#pw_popup { position: fixed; bottom: 176px; right: 20px; width: 300px; max-height: 80vh; height: auto; background: #fff; border: 1px solid #E8E0E4; border-radius: 16px; overflow: hidden; z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: none; flex-direction: column; }
 #pw_popup.visible { display: flex; }
 #pw_popup_header { background: #fff; padding: 8px 14px; border-bottom: 1px solid #EDE8EB; display: flex; align-items: center; justify-content: flex-end; gap: 14px; cursor: grab; flex-shrink: 0; user-select: none; }
 #pw_popup_header button { font-size: 12px; color: #C0B0B8; cursor: pointer; background: none; border: none; padding: 2px; transition: color 0.15s; line-height: 1; }
@@ -113,9 +113,9 @@
 
 /* 모바일 */
 @media (max-width: 768px) {
-    #pw_float_btn { width: 38px !important; height: 38px !important; font-size: 20px !important; top: 50vh !important; right: 12px !important; bottom: auto !important; left: auto !important; }
-    #pw_popup { width: calc(100vw - 24px); left: 12px; right: 12px; bottom: auto; top: 10vh; border-radius: 14px; }
-    .pw_messages { max-height: 200px; }
+    #pw_float_btn { width: 38px; height: 38px; font-size: 20px; top: 50vh; right: 12px; bottom: auto; }
+    #pw_popup { width: calc(100vw - 24px); left: 12px; right: 12px; bottom: auto; top: 10vh; border-radius: 14px; max-height: 80vh; }
+    .pw_messages { max-height: 45vh; }
 }
 
 /* 커스텀 프롬프트 토글 */
