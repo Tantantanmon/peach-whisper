@@ -1,5 +1,5 @@
 /**
- * Peach Whisper v1.3.0 - 채팅 분석 어시스턴트
+ * Peach Whisper v1.4.0 - 채팅 분석 어시스턴트
  */
 
 import { event_types } from '../../../events.js';
@@ -202,6 +202,8 @@ async function init() {
     applyFontSize();
     await restoreHistories();
     initEventListeners();
+    // enabled 상태면 팝업 자동 열기
+    if (settings.enabled) openPopup();
     console.log(`[${EXTENSION_NAME}] 초기화 완료`);
 }
 
@@ -337,7 +339,7 @@ function buildSettingsModalHTML() {
                 <div id="pw_settings_modal_title">Peach Whisper</div>
                 <div id="pw_settings_modal_sub">채팅 분석 어시스턴트</div>
             </div>
-            <span id="pw_settings_modal_version">v1.3.0</span>
+            <span id="pw_settings_modal_version">v1.4.0</span>
             <button id="pw_settings_modal_close">✕</button>
         </div>
         <div id="pw_settings_modal_body">
@@ -345,8 +347,8 @@ function buildSettingsModalHTML() {
                 <div class="pw_section_label">기본 설정</div>
                 <div class="pw_row" style="margin-bottom:10px;">
                     <div>
-                        <div class="pw_row_label">버튼 활성화</div>
-                        <div class="pw_row_sub">채팅창 🍑 버튼 표시</div>
+                        <div class="pw_row_label">채팅창 활성화</div>
+                        <div class="pw_row_sub">Peach Whisper 채팅창 표시</div>
                     </div>
                     <label class="pw_toggle">
                         <input type="checkbox" id="pw_modal_enabled" ${settings.enabled ? 'checked' : ''} />
@@ -506,77 +508,15 @@ function closeSettingsModal() {
 }
 
 function injectFloatButton() {
-    if ($('#pw_float_btn').length) return;
-    const btn = $('<div id="pw_float_btn" title="Peach Whisper">🍑</div>');
-    $('body').append(btn);
-
-    function positionBtn() {
-        if (settings.btnX !== null && settings.btnY !== null) {
-            // 저장된 위치가 화면 안에 있을 때만 적용
-            if (settings.btnX >= 0 && settings.btnX < window.innerWidth && settings.btnY >= 0 && settings.btnY < window.innerHeight) {
-                btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
-                return;
-            } else {
-                settings.btnX = null; settings.btnY = null; saveSettings();
-            }
-        }
-        if (isMobile()) return; // 모바일은 CSS 기본값 사용
-        const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
-        const btnSize = 46;
-        const rightOffset = 20;
-        const gap = 10;
-        if (inputForm) {
-            const rect = inputForm.getBoundingClientRect();
-            const newTop = rect.top - btnSize - gap;
-            const newLeft = window.innerWidth - btnSize - rightOffset;
-            btn.css({ right: 'auto', bottom: 'auto', left: newLeft + 'px', top: newTop + 'px' });
-        }
-    }
-
-    setTimeout(positionBtn, 500);
-
-    // 화면 크기/키보드 변화 대응
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', positionBtn);
-        window.visualViewport.addEventListener('scroll', positionBtn);
-    }
-    window.addEventListener('resize', positionBtn);
-
-    if (!settings.enabled) btn.hide();
-
-    let isDragging = false, dragMoved = false, dragStartX, dragStartY, btnStartX, btnStartY;
-    btn.on('mousedown touchstart', function (e) {
-        isDragging = true; dragMoved = false;
-        const p = e.touches ? e.touches[0] : e;
-        dragStartX = p.clientX; dragStartY = p.clientY;
-        const off = btn.offset(); btnStartX = off.left; btnStartY = off.top;
-        if (!e.touches) e.preventDefault(); // 마우스만 preventDefault
-    });
-    $(document).on('mousemove.pw touchmove.pw', function (e) {
-        if (!isDragging) return;
-        const p = e.touches ? e.touches[0] : e;
-        const dx = p.clientX - dragStartX, dy = p.clientY - dragStartY;
-        const threshold = isMobile() ? 10 : 3;
-        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) dragMoved = true;
-        if (!dragMoved) return;
-        const newX = Math.max(0, Math.min(window.innerWidth - 50, btnStartX + dx));
-        const newY = Math.max(0, Math.min(window.innerHeight - 50, btnStartY + dy));
-        btn.css({ right: 'auto', bottom: 'auto', left: newX + 'px', top: newY + 'px' });
-        e.preventDefault();
-    });
-    $(document).on('mouseup.pw touchend.pw', function (e) {
-        if (!isDragging) return;
-        isDragging = false;
-        if (!dragMoved) { togglePopup(); }
-        else {
-            const off = btn.offset(); settings.btnX = off.left; settings.btnY = off.top;
-            saveSettings();
-        }
-    });
+    // 플로팅 버튼 제거 - 설정 모달 토글로 대체
 }
 
 function toggleFloatButton() {
-    settings.enabled ? $('#pw_float_btn').show() : ($('#pw_float_btn').hide(), closePopup());
+    if (settings.enabled) {
+        openPopup();
+    } else {
+        closePopup();
+    }
 }
 
 function injectPopup() {
@@ -722,7 +662,13 @@ function openPopup() {
     $(`#pw_input_${activeTabId}`).focus();
 }
 
-function closePopup() { $('#pw_popup').removeClass('visible'); }
+function closePopup() {
+    $('#pw_popup').removeClass('visible');
+    settings.enabled = false;
+    saveSettings();
+    // 설정 모달이 열려있으면 토글도 업데이트
+    $('#pw_modal_enabled').prop('checked', false);
+}
 
 function toggleCollapse() {
     const body = $('#pw_popup_body');
