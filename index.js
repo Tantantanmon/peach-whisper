@@ -515,17 +515,14 @@ function injectFloatButton() {
             btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
             return;
         }
+        if (isMobile()) return; // 모바일은 CSS 기본값 사용
         const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
-        const btnSize = isMobile() ? 38 : 46;
-        const rightOffset = isMobile() ? 12 : 20;
+        const btnSize = 46;
+        const rightOffset = 20;
         const gap = 10;
         if (inputForm) {
             const rect = inputForm.getBoundingClientRect();
-            // 모바일에서 visualViewport 기준으로 실제 보이는 영역 사용
-            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            const viewportOffsetTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
-            const inputTop = rect.top - viewportOffsetTop;
-            const newTop = Math.min(inputTop - btnSize - gap, viewportHeight - btnSize - gap) + viewportOffsetTop;
+            const newTop = rect.top - btnSize - gap;
             const newLeft = window.innerWidth - btnSize - rightOffset;
             btn.css({ right: 'auto', bottom: 'auto', left: newLeft + 'px', top: newTop + 'px' });
         }

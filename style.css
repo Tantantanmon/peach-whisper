@@ -113,7 +113,7 @@
 
 /* 모바일 */
 @media (max-width: 768px) {
-    #pw_float_btn { width: 38px; height: 38px; font-size: 20px; bottom: 110px; right: 12px; }
+    #pw_float_btn { width: 38px; height: 38px; font-size: 20px; top: 50vh; right: 12px; bottom: auto; }
     #pw_popup { width: calc(100vw - 24px); left: 12px; right: 12px; bottom: auto; top: 10vh; border-radius: 14px; }
     .pw_messages { max-height: 200px; }
 }
