@@ -556,7 +556,8 @@ function injectFloatButton() {
         if (!isDragging) return;
         const p = e.touches ? e.touches[0] : e;
         const dx = p.clientX - dragStartX, dy = p.clientY - dragStartY;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+        const threshold = isMobile() ? 10 : 3;
+        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) dragMoved = true;
         if (!dragMoved) return;
         const newX = Math.max(0, Math.min(window.innerWidth - 50, btnStartX + dx));
         const newY = Math.max(0, Math.min(window.innerHeight - 50, btnStartY + dy));
