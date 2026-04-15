@@ -529,9 +529,7 @@ function injectPopup() {
                 <button id="pw_close_btn" title="닫기">✕</button>
             </div>
             <div id="pw_popup_body">
-                <div id="pw_tab_bar">
-                    <div id="pw_tab_add" title="커스텀 탭 추가">＋</div>
-                </div>
+                <div id="pw_tab_bar"></div>
                 <div id="pw_tab_contents"></div>
             </div>
             <div id="pw_resize_handle"></div>
@@ -549,30 +547,18 @@ function injectPopup() {
     $('#pw_clear_btn').on('click', clearCurrentTab);
     $('#pw_collapse_btn').on('click', toggleCollapse);
     $('#pw_close_btn').on('click', closePopup);
-    $('#pw_tab_add').on('click', () => addCustomTab(null));
 
     initResize();
     initPopupDrag();
 }
 
 function addTabToPopup(tabId, tabName) {
-    const tab = settings.tabs.find(t => t.id === tabId);
-    const isDeletable = tab && !tab.isDefault;
-    const deleteBtn = isDeletable ? `<span class="pw_tab_close" data-tabid="${tabId}">✕</span>` : '';
-    const tabEl = $(`<div class="pw_tab${isDeletable ? ' pw_tab_closable' : ''}" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}${deleteBtn}</div>`);
+    const tabEl = $(`<div class="pw_tab" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}</div>`);
     tabEl.on('click', function(e) {
-        if ($(e.target).hasClass('pw_tab_close')) return;
         switchTab(tabId);
     });
-    tabEl.find('.pw_tab_close').on('click', function(e) {
-        e.stopPropagation();
-        deleteTab(tabId);
-    });
 
-    // 마우스/터치 드래그로 탭 순서 변경
-    initTabDrag(tabEl[0]);
-
-    $('#pw_tab_bar #pw_tab_add').before(tabEl);
+    $('#pw_tab_bar').append(tabEl);
 
     const placeholder = tabId === 'help' ? '롤플레이 관련 질문하기...' : '질문하기...';
     const content = `
@@ -623,9 +609,7 @@ function initTabDrag(el) {
         settings.tabs.splice(tgtIdx, 0, removed);
         saveSettings();
         const $tabBar = $('#pw_tab_bar');
-        const $add = $('#pw_tab_add').detach();
         settings.tabs.forEach(t => $tabBar.append($(`#pw_tab_${t.id}`).detach()));
-        $tabBar.append($add);
         startX = clientX;
     };
 
@@ -664,11 +648,9 @@ function onTabDrop(e) {
     settings.tabs.splice(tgtIdx, 0, removed);
     saveSettings();
     const $tabBar = $('#pw_tab_bar');
-    const $add = $('#pw_tab_add').detach();
     settings.tabs.forEach(t => {
         $tabBar.append($(`#pw_tab_${t.id}`).detach());
     });
-    $tabBar.append($add);
     return false;
 }
 
