@@ -559,7 +559,7 @@ function addTabToPopup(tabId, tabName) {
     const tab = settings.tabs.find(t => t.id === tabId);
     const isDeletable = tab && !tab.isDefault;
     const deleteBtn = isDeletable ? `<span class="pw_tab_close" data-tabid="${tabId}">✕</span>` : '';
-    const tabEl = $(`<div class="pw_tab${isDeletable ? ' pw_tab_closable' : ''}" id="pw_tab_${tabId}" data-tabid="${tabId}" draggable="true">${tabName}${deleteBtn}</div>`);
+    const tabEl = $(`<div class="pw_tab${isDeletable ? ' pw_tab_closable' : ''}" id="pw_tab_${tabId}" data-tabid="${tabId}">${tabName}${deleteBtn}</div>`);
     tabEl.on('click', function(e) {
         if ($(e.target).hasClass('pw_tab_close')) return;
         switchTab(tabId);
@@ -569,11 +569,8 @@ function addTabToPopup(tabId, tabName) {
         deleteTab(tabId);
     });
 
-    // 드래그 이벤트
-    tabEl[0].addEventListener('dragstart', onTabDragStart);
-    tabEl[0].addEventListener('dragover', onTabDragOver);
-    tabEl[0].addEventListener('drop', onTabDrop);
-    tabEl[0].addEventListener('dragend', onTabDragEnd);
+    // 마우스/터치 드래그로 탭 순서 변경
+    initTabDrag(tabEl[0]);
 
     $('#pw_tab_bar #pw_tab_add').before(tabEl);
 
@@ -594,6 +591,52 @@ function addTabToPopup(tabId, tabName) {
     contentEl.find(`#pw_input_${tabId}`).on('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(tabId); }
     });
+}
+
+function initTabDrag(el) {
+    let isDragging = false, startX, srcTabId;
+
+    const onStart = (e) => {
+        if ($(e.target).hasClass('pw_tab_close')) return;
+        isDragging = false;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        srcTabId = el.dataset.tabid;
+    };
+
+    const onMove = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        if (Math.abs(clientX - startX) > 8) isDragging = true;
+        if (!isDragging) return;
+        e.preventDefault();
+        // 현재 X 위치에서 어느 탭 위에 있는지 찾기
+        const tabs = [...document.querySelectorAll('#pw_tab_bar .pw_tab')];
+        const target = tabs.find(t => {
+            const r = t.getBoundingClientRect();
+            return clientX >= r.left && clientX <= r.right && t.dataset.tabid !== srcTabId;
+        });
+        if (!target) return;
+        const targetTabId = target.dataset.tabid;
+        const srcIdx = settings.tabs.findIndex(t => t.id === srcTabId);
+        const tgtIdx = settings.tabs.findIndex(t => t.id === targetTabId);
+        if (srcIdx === -1 || tgtIdx === -1) return;
+        const [removed] = settings.tabs.splice(srcIdx, 1);
+        settings.tabs.splice(tgtIdx, 0, removed);
+        saveSettings();
+        const $tabBar = $('#pw_tab_bar');
+        const $add = $('#pw_tab_add').detach();
+        settings.tabs.forEach(t => $tabBar.append($(`#pw_tab_${t.id}`).detach()));
+        $tabBar.append($add);
+        startX = clientX;
+    };
+
+    const onEnd = () => { isDragging = false; };
+
+    el.addEventListener('mousedown', onStart);
+    el.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
 }
 
 let dragSrcTabId = null;
@@ -620,7 +663,6 @@ function onTabDrop(e) {
     const [removed] = settings.tabs.splice(srcIdx, 1);
     settings.tabs.splice(tgtIdx, 0, removed);
     saveSettings();
-    // 탭바 DOM 순서 재정렬
     const $tabBar = $('#pw_tab_bar');
     const $add = $('#pw_tab_add').detach();
     settings.tabs.forEach(t => {
