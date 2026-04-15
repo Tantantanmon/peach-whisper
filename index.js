@@ -550,7 +550,7 @@ function injectFloatButton() {
         const p = e.touches ? e.touches[0] : e;
         dragStartX = p.clientX; dragStartY = p.clientY;
         const off = btn.offset(); btnStartX = off.left; btnStartY = off.top;
-        e.preventDefault();
+        if (!e.touches) e.preventDefault(); // 마우스만 preventDefault
     });
     $(document).on('mousemove.pw touchmove.pw', function (e) {
         if (!isDragging) return;
@@ -564,7 +564,7 @@ function injectFloatButton() {
         btn.css({ right: 'auto', bottom: 'auto', left: newX + 'px', top: newY + 'px' });
         e.preventDefault();
     });
-    $(document).on('mouseup.pw touchend.pw', function () {
+    $(document).on('mouseup.pw touchend.pw', function (e) {
         if (!isDragging) return;
         isDragging = false;
         if (!dragMoved) { togglePopup(); }
