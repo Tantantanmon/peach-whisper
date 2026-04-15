@@ -512,8 +512,13 @@ function injectFloatButton() {
 
     function positionBtn() {
         if (settings.btnX !== null && settings.btnY !== null) {
-            btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
-            return;
+            // 저장된 위치가 화면 안에 있을 때만 적용
+            if (settings.btnX >= 0 && settings.btnX < window.innerWidth && settings.btnY >= 0 && settings.btnY < window.innerHeight) {
+                btn.css({ right: 'auto', bottom: 'auto', left: settings.btnX + 'px', top: settings.btnY + 'px' });
+                return;
+            } else {
+                settings.btnX = null; settings.btnY = null; saveSettings();
+            }
         }
         if (isMobile()) return; // 모바일은 CSS 기본값 사용
         const inputForm = document.querySelector('#send_form') || document.querySelector('#message_holder');
