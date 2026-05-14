@@ -955,17 +955,23 @@ async function generateResponse(tabId, userMessage) {
         if (!settings.profileId) throw new Error('Connection Profile을 선택해주세요.');
         const messages = [
             { role: 'user', content: systemPrompt },
-            { role: 'model', content: '알겠습니다. 위 설정을 숙지했습니다.' },
-            ...history,
+            { role: 'assistant', content: '알겠습니다. 위 설정을 숙지했습니다.' },
+            ...history.map(m => ({ ...m, role: m.role === 'model' ? 'assistant' : m.role })),
             ...(userMessage ? [{ role: 'user', content: userMessage }] : []),
         ];
         const response = await globalContext.ConnectionManagerRequestService.sendRequest(
             settings.profileId, messages, tabSettings.maxTokens,
-            { stream: false, extractData: true, includePreset: false, includeInstruct: false }
+            { stream: false, extractData: true, includePreset: true, includeInstruct: false }
         );
-        if (typeof response === 'string') return response;
+        // 다양한 응답 구조 파싱
+        if (typeof response === 'string' && response.trim()) return response;
         if (response?.choices?.[0]?.message?.content) return response.choices[0].message.content;
-        return response?.content || response?.message || '응답을 받지 못했습니다.';
+        if (response?.content?.[0]?.text) return response.content[0].text;
+        if (response?.content) return response.content;
+        if (response?.message) return response.message;
+        if (response?.text) return response.text;
+        console.error('[PeachWhisper] 알 수 없는 응답 구조:', response);
+        return '응답을 받지 못했습니다.';
     }
 }
 
